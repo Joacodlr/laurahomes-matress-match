@@ -63,14 +63,28 @@ above.
 
 ## Deploying to Vercel
 
-Set the same variables under **Settings → Environment Variables**:
+Nothing to configure in the repo — Vercel detects Next.js and uses the right
+build command on its own. There is deliberately no `vercel.json`; the defaults
+are correct here and a config file would only be one more thing to keep true.
 
-- `DATABASE_URL`
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL` *(optional)*
+1. **vercel.com → Add New → Project**, then import
+   `Joacodlr/laurahomes-matress-match`.
+2. Leave every build setting at its detected default (Framework: Next.js,
+   Build: `next build`, Output: `.next`).
+3. Add the environment variables below, for **Production, Preview and
+   Development**.
+4. **Deploy.**
 
-`DATABASE_SSL` should be left unset in production — RDS wants SSL, and the
-default path enables it.
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the same MySQL string LauraHomes uses |
+| `OPENAI_API_KEY` | the same OpenAI key |
+| `OPENAI_MODEL` | optional; omit to use `gpt-4o-mini` |
+
+Leave `DATABASE_SSL` **unset** in production — RDS wants SSL and the default
+path enables it. Setting it to `false` there would break the connection.
+
+Every later push to `main` redeploys automatically.
 
 The database must accept connections from Vercel's IP range. LauraHomes already
 runs there against the same instance, so this should need no change.
