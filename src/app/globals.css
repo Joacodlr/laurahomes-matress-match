@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens, lifted from LauraHomes so this app looks like part of the same
+ * family. Warm cream background, charcoal text, clay accent. Colours are in
+ * oklch for perceptual consistency.
+ *
+ * The blog/catalogue/editorial component layers from the source stylesheet are
+ * deliberately absent — none of those surfaces exist here.
+ */
+:root {
+  --charcoal: oklch(24% 0.012 60);
+  --clay: oklch(72% 0.05 55);
+  --clay-deep: oklch(62% 0.07 50);
+  --ivory: oklch(98.5% 0.008 85);
+  --sand: oklch(94% 0.018 80);
+
+  --background: oklch(98.8% 0.007 85);
+  --foreground: oklch(24% 0.012 60);
+
+  --card: oklch(100% 0.004 85);
+  --card-foreground: oklch(24% 0.012 60);
+
+  --primary: oklch(24% 0.012 60);
+  --primary-foreground: oklch(98.5% 0.008 85);
+
+  --secondary: oklch(94% 0.018 80);
+  --secondary-foreground: oklch(32% 0.02 60);
+
+  --muted: oklch(95% 0.012 80);
+  --muted-foreground: oklch(52% 0.03 60);
+
+  --accent: oklch(72% 0.05 55);
+  --accent-foreground: oklch(98.5% 0.008 85);
+
+  --border: oklch(90% 0.015 80);
+  --ring: oklch(72% 0.05 55);
+
+  --radius: 1.25rem;
+}
+
+@theme inline {
+  --color-charcoal: var(--charcoal);
+  --color-clay: var(--clay);
+  --color-clay-deep: var(--clay-deep);
+  --color-ivory: var(--ivory);
+  --color-sand: var(--sand);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-fraunces);
+
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+  --radius-2xl: calc(var(--radius) + 1rem);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  /*
+   * Windows draws a wide grey scrollbar with stepper arrows by default, which
+   * looks nothing like the rest of the app. These make every scroll container a
+   * thin tonal bar that fades into the surface it sits on. Both syntaxes are
+   * set: Firefox and Chromium 121+ use the standard properties, older WebKit the
+   * pseudo-elements.
+   */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--clay) 50%, transparent) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    /* The transparent border plus `content-box` clipping is what insets the
+       thumb, so it reads as a floating pill rather than a full-width slab. */
+    background-color: color-mix(in oklab, var(--clay) 45%, transparent);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--clay-deep) 70%, transparent);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 30%, transparent);
+  }
+}
+
+@layer components {
+  /*
+   * Each answered question and each result card rises into place. One keyframe
+   * rather than a motion library, staggered by `--rise-delay` where a group
+   * appears at once.
+   */
+  .rise {
+    animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Never withhold content from someone who asked for less motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .rise {
+      animation: none;
+    }
+  }
+}
