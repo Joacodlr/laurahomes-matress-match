@@ -1,7 +1,7 @@
 import "server-only";
 import { LANGUAGE_LABEL, type Locale } from "@/lib/i18n/config";
 import { BUDGET_BANDS, STYLE_TONES } from "@/lib/questionnaire";
-import { buildDigest, getCatalogue } from "./catalogue";
+import { buildDigest, childFriendliness, describeFinish, getCatalogue } from "./catalogue";
 import type { Product } from "./types";
 
 /**
@@ -118,19 +118,89 @@ function withinBudget(
 }
 
 /**
+ * Keep only what could plausibly be the look they asked for.
+ *
+ * The same argument as the budget filter: telling the model to prefer a dark
+ * finish is a request, and it kept answering "oscuro y acogedor" with a
+ * light-oak canapé at the top of the list. Removing the wrong ones from the
+ * catalogue before it sees them is a guarantee.
+ *
+ * What survives:
+ *   - the exact tone (`oscuro` for a dark request);
+ *   - `mixto`, but only when its colours actually include one they want — a
+ *     product sold in white and black qualifies for both, one sold in white and
+ *     beige qualifies for neither;
+ *   - an unconfident reading of the right tone (`oscuro?`), because a hedge is
+ *     still evidence and the prompt makes it hedge in the reply too.
+ *
+ * `unknown` does NOT survive. Nobody could tell what colour it is, so offering
+ * it as a colour match is the exact thing that made this wrong in the first
+ * place. It stays available to a shopper with no preference.
+ *
+ * Returns everything with `unmet` when nothing qualifies — an empty page helps
+ * nobody, and the prompt then has to say the look is not available rather than
+ * dress up a mismatch.
+ */
+function matchingStyle(
+  products: Product[],
+  wanted: { tone: string; colours: readonly string[] } | null | undefined,
+): { products: Product[]; unmet: boolean } {
+  if (!wanted) return { products, unmet: false };
+
+  const matches = products.filter((product) => {
+    const { tone, colours } = describeFinish(product);
+    const base = tone.replace(/\?$/, "");
+
+    if (base === "unknown") return false;
+    if (base === wanted.tone) return true;
+    if (base === "mixto") {
+      return colours.some((colour) => wanted.colours.includes(colour));
+    }
+    return false;
+  });
+
+  return matches.length > 0
+    ? { products: matches, unmet: false }
+    : { products, unmet: true };
+}
+
+/**
+ * When the bed is for a child, drop what is plainly not.
+ *
+ * Deliberately softer than the colour filter: only four products are positively
+ * identified as children's furniture, so requiring `si` on top of a budget and a
+ * colour would routinely leave nothing. What it does remove is everything the
+ * photo showed to be an adult double — the pieces that are actively wrong to
+ * offer for a child's room. Unknowns stay, and the prompt is told to lead with
+ * the confirmed ones.
+ */
+function suitableForChild(
+  products: Product[],
+  forChild: boolean,
+): { products: Product[]; unmet: boolean } {
+  if (!forChild) return { products, unmet: false };
+
+  const usable = products.filter((product) => childFriendliness(product) !== "no");
+
+  return usable.length > 0
+    ? { products: usable, unmet: false }
+    : { products, unmet: true };
+}
+
+/**
  * Laurahomes' `recommendNow` branch, keeping its `${language}` interpolation —
  * that line is what makes the adviser answer in the visitor's language.
  *
- * Two sections have since diverged, both because this app enforces in code what
- * that one only asks for: the budget paragraph is replaced by `budgetNote`
- * (the catalogue arrives pre-filtered), and the finishes section is new (that
- * project has no colour data to reason about at all).
+ * Three sections have since diverged, all because this app enforces in code what
+ * that one only asks for: budget, colour and child-suitability each arrive as a
+ * pre-filtered catalogue plus a note saying what was already guaranteed, so the
+ * model is told to stop re-deciding them.
  */
 function systemPrompt(
   digest: string,
   categories: string[],
   locale: Locale,
-  constraints: { budgetNote: string; styleNote: string },
+  constraints: { budgetNote: string; styleNote: string; childNote: string },
 ): string {
   const language = LANGUAGE_LABEL[locale];
 
@@ -170,6 +240,7 @@ function systemPrompt(
     "  look they asked for. Recommend it on comfort, size, storage or price if it",
     "  earns a place — just say nothing whatsoever about its appearance.",
     constraints.styleNote,
+    constraints.childNote,
     "- Inventing a colour is the worst thing you can do here: it is the one claim a",
     "  customer checks immediately, and being wrong about it costs the sale.",
     "- Same for anything else they asked for that we do not stock. Name the gap,",
@@ -225,18 +296,38 @@ export async function matchProducts(
           : "");
 
   const wanted = STYLE_TONES[choices.style];
-  const styleNote = wanted
-    ? `- THE LOOK THEY ASKED FOR: ${wanted.label}. Strongly prefer products whose` +
-      `\n  tone is \`${wanted.tone}\`, or \`mixto\` when their colours include one of:` +
-      `\n  ${wanted.colours.join(", ")}. A product with the wrong tone is a poor match no` +
-      "\n  matter how good it is otherwise — if you recommend one anyway, say why and" +
-      "\n  score it accordingly. If nothing in the catalogue offers the look they" +
-      "\n  asked for, say so plainly rather than pretending something does."
-    : "- They have no colour preference, so do not dwell on finishes.";
+  const { products: onStyle, unmet: styleUnmet } = matchingStyle(affordable, wanted);
+
+  const styleNote = !wanted
+    ? "- They have no colour preference, so do not dwell on finishes."
+    : styleUnmet
+      ? `- IMPORTANT: they asked for ${wanted.label}, and NOTHING in the catalogue` +
+        "\n  below offers it. Your first sentence must say so plainly, and you must not" +
+        "\n  describe any of these as matching the look they wanted. Recommend on" +
+        "\n  everything else they told you instead."
+      : `- The catalogue below has ALREADY been filtered to ${wanted.label}, the look` +
+        "\n  they asked for. Everything you can see qualifies, so do not hedge about" +
+        "\n  whether it suits their taste — but keep to the tone rules above when" +
+        "\n  describing any individual piece.";
+
+  // "Es para un niño" is the third answer to the `sleepers` question.
+  const forChild = choices.sleepers === 2;
+  const { products: shortlist, unmet: childUnmet } = suitableForChild(onStyle, forChild);
+
+  const childNote = !forChild
+    ? ""
+    : childUnmet
+      ? "- They are buying for a child's room, and nothing below is clearly suited to" +
+        "\n  one. Say so honestly rather than implying otherwise."
+      : "- They are buying for a CHILD'S room. Entries marked `for a child: si` were" +
+        "\n  confirmed as children's furniture from the photograph — lead with those." +
+        "\n  `desconocido` means nobody could tell, so recommend it on its own merits" +
+        "\n  and never claim it is designed for children. Anything plainly an adult" +
+        "\n  double has already been removed.";
 
   // Built from the filtered list, not the cached full one — the model must not
   // see a product it is not allowed to recommend.
-  const digest = buildDigest(affordable);
+  const digest = buildDigest(shortlist);
 
   const res = await fetch(OPENAI_ENDPOINT, {
     method: "POST",
@@ -246,7 +337,11 @@ export async function matchProducts(
       messages: [
         {
           role: "system",
-          content: systemPrompt(digest, categories, locale, { budgetNote, styleNote }),
+          content: systemPrompt(digest, categories, locale, {
+            budgetNote,
+            styleNote,
+            childNote,
+          }),
         },
         ...history.slice(-MAX_HISTORY).map((turn) => ({
           role: turn.role,
@@ -278,9 +373,9 @@ export async function matchProducts(
 
   // Resolved against the filtered list, not the full catalogue: an id the model
   // was never shown is one it invented or smuggled back in, and either way it
-  // must not reach a card. This is what makes the budget a guarantee rather than
-  // an instruction.
-  return { reply, recommendations: resolveRecommendations(decoded, affordable) };
+  // must not reach a card. This is what makes the budget and the colour
+  // guarantees rather than instructions.
+  return { reply, recommendations: resolveRecommendations(decoded, shortlist) };
 }
 
 /**

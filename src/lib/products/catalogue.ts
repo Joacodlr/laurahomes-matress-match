@@ -87,6 +87,7 @@ const FINISH_WORDS = [
 interface VisionFinish {
   tone: "claro" | "oscuro" | "mixto" | "desconocido";
   colours: string[];
+  childFriendly?: "si" | "no" | "desconocido";
   confident: boolean;
 }
 
@@ -104,7 +105,18 @@ const VISION: Record<string, VisionFinish> = visionFinishes as Record<string, Vi
  *
  * See scripts/classify-finishes.mjs for how the photo half is produced.
  */
-function describeFinish(product: Product): { tone: string; colours: string[] } {
+/**
+ * Whether this looks like furniture for a child's room.
+ *
+ * Only the photo knows. Five of twenty-eight products mention anything
+ * child-related in their text, and two of those say "individual", which is a bed
+ * size rather than an age — adults sleep in single beds too.
+ */
+export function childFriendliness(product: Product): "si" | "no" | "desconocido" {
+  return VISION[String(product.id)]?.childFriendly ?? "desconocido";
+}
+
+export function describeFinish(product: Product): { tone: string; colours: string[] } {
   // The whole description, NOT the truncated one: the finishes are usually
   // listed near the end, under "acabados disponibles", and truncating first
   // threw that away for six of the twenty-eight products.
@@ -160,6 +172,7 @@ export function buildDigest(products: Product[]): string {
         `${price} EUR${sale}`,
         `tone: ${tone}`,
         `colours: ${colours.length > 0 ? colours.join("/") : "unknown"}`,
+        `for a child: ${childFriendliness(product)}`,
         description || "no description",
       ].join(" | ");
     })

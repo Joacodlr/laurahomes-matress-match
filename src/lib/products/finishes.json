@@ -5,6 +5,7 @@
       "gris",
       "madera"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "2": {
@@ -12,6 +13,7 @@
     "colours": [
       "blanco"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "3": {
@@ -19,11 +21,13 @@
     "colours": [
       "turquesa"
     ],
+    "childFriendly": "si",
     "confident": true
   },
   "4": {
     "tone": "desconocido",
     "colours": [],
+    "childFriendly": "si",
     "confident": false
   },
   "5": {
@@ -32,14 +36,17 @@
       "beige",
       "negro"
     ],
+    "childFriendly": "si",
     "confident": true
   },
   "6": {
     "tone": "mixto",
     "colours": [
       "rosa",
-      "morado"
+      "morado",
+      "beige"
     ],
+    "childFriendly": "si",
     "confident": true
   },
   "7": {
@@ -48,6 +55,7 @@
       "morado",
       "negro"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "8": {
@@ -56,6 +64,7 @@
       "blanco",
       "negro"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "9": {
@@ -64,13 +73,16 @@
       "beige",
       "madera"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "10": {
     "tone": "mixto",
     "colours": [
-      "madera"
+      "madera",
+      "beige"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "11": {
@@ -79,6 +91,7 @@
       "beige",
       "marrón"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "12": {
@@ -86,6 +99,7 @@
     "colours": [
       "negro"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "13": {
@@ -93,14 +107,16 @@
     "colours": [
       "negro"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "14": {
     "tone": "mixto",
     "colours": [
-      "beige",
-      "blanco"
+      "blanco",
+      "beige"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "15": {
@@ -109,6 +125,7 @@
       "blanco",
       "gris"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "16": {
@@ -117,6 +134,7 @@
       "blanco",
       "azul"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "17": {
@@ -125,16 +143,14 @@
       "blanco",
       "beige"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "18": {
-    "tone": "mixto",
-    "colours": [
-      "blanco",
-      "verde",
-      "turquesa"
-    ],
-    "confident": true
+    "tone": "desconocido",
+    "colours": [],
+    "childFriendly": "desconocido",
+    "confident": false
   },
   "19": {
     "tone": "claro",
@@ -142,14 +158,16 @@
       "blanco",
       "negro"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "20": {
     "tone": "mixto",
     "colours": [
-      "blanco",
-      "marrón"
+      "marrón",
+      "blanco"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "21": {
@@ -158,6 +176,7 @@
       "blanco",
       "gris"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "22": {
@@ -166,6 +185,7 @@
       "madera",
       "gris"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "23": {
@@ -173,6 +193,7 @@
     "colours": [
       "negro"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "24": {
@@ -180,13 +201,16 @@
     "colours": [
       "madera"
     ],
+    "childFriendly": "no",
     "confident": true
   },
   "25": {
     "tone": "claro",
     "colours": [
-      "beige"
+      "beige",
+      "blanco"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "26": {
@@ -195,14 +219,16 @@
       "blanco",
       "verde"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "27": {
-    "tone": "mixto",
+    "tone": "claro",
     "colours": [
       "blanco",
       "azul"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   },
   "28": {
@@ -211,6 +237,7 @@
       "blanco",
       "azul"
     ],
+    "childFriendly": "desconocido",
     "confident": true
   }
 }

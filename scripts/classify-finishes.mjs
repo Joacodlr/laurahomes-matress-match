@@ -92,6 +92,7 @@ the bedding styled around it, not any promotional text overlaid on the image.
 Answer with strict JSON only:
 {"tone": "claro" | "oscuro" | "mixto" | "desconocido",
  "colours": string[],
+ "childFriendly": "si" | "no" | "desconocido",
  "confident": boolean}
 
 - "tone" is the single most useful field:
@@ -104,6 +105,13 @@ Answer with strict JSON only:
 - "colours" lists the finishes you can actually see, in Spanish, lowercase
   (blanco, negro, gris, antracita, roble, nogal, wengue, beige, madera...).
   Use [] when the tone is desconocido.
+- "childFriendly" says whether this looks like furniture for a child's room:
+    si   — clearly aimed at children: a trundle or nest bed, a toy-storage
+           chest, a narrow single frame, bright playful colours
+    no   — clearly an adult double, or plainly generic bedroom furniture
+    desconocido — you cannot tell from the photo
+  Judge only what you can see. A plain single mattress is NOT automatically for
+  a child; adults sleep in single beds too.
 - "confident" is false when you are guessing. A mattress photographed on a white
   studio background is a WHITE MATTRESS only if the mattress itself is white —
   if you are really describing the backdrop, say desconocido instead.
@@ -203,11 +211,16 @@ async function classify(imageUrl) {
     ? parsed.tone
     : "desconocido";
 
+  const childFriendly = ["si", "no", "desconocido"].includes(parsed.childFriendly)
+    ? parsed.childFriendly
+    : "desconocido";
+
   return {
     tone,
     colours: Array.isArray(parsed.colours)
       ? parsed.colours.filter((c) => typeof c === "string" && c.trim()).map((c) => c.toLowerCase())
       : [],
+    childFriendly,
     confident: parsed.confident === true,
   };
 }
@@ -253,8 +266,10 @@ try {
       called++;
       results[id] = verdict;
       const flag = verdict.confident ? " " : "?";
+      const kids = verdict.childFriendly === "si" ? "  [niños]" : "";
       console.log(
-        `${flag} ${row.name.padEnd(38)} ${verdict.tone.padEnd(12)} ${verdict.colours.join(", ")}`,
+        `${flag} ${row.name.padEnd(38)} ${verdict.tone.padEnd(12)} ` +
+          `${verdict.colours.join(", ").padEnd(22)}${kids}`,
       );
     } catch (error) {
       // Deliberately NOT recorded. A failure is a slow image or a hiccup, not a
