@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { isLocale, type Locale } from "@/lib/i18n/config";
+import { getServerLocale } from "@/lib/i18n/server";
 import { MAX_HISTORY, MAX_MESSAGE_CHARS, matchProducts, type AssistantTurn } from "@/lib/products/matcher";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 
 /**
  * POST /api/match
- * Body: { messages: { role: "user" | "assistant", content: string }[] }
+ * Body: { messages: { role: "user" | "assistant", content: string }[], locale?: string }
  *
  * The end of the questionnaire: weigh every answer against the catalogue and
  * return up to three products with a fit score each.
@@ -31,7 +33,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as { messages?: unknown };
+  const body = (await req.json().catch(() => ({}))) as {
+    messages?: unknown;
+    locale?: unknown;
+  };
+
+  // The reply language follows the toggle the visitor is looking at, not the
+  // language they happen to read in. Falls back to the cookie (and then to
+  // Accept-Language) so a caller that omits it still behaves.
+  const locale: Locale = isLocale(typeof body.locale === "string" ? body.locale : undefined)
+    ? (body.locale as Locale)
+    : await getServerLocale();
 
   let messages: AssistantTurn[];
   try {
@@ -44,7 +56,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await matchProducts(messages);
+    const result = await matchProducts(messages, locale);
     return NextResponse.json({
       reply: result.reply,
       products: result.recommendations.map(({ product, match }) => ({

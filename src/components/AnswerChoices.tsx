@@ -1,7 +1,7 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { COPY, QUESTIONS } from "@/lib/questions";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 import { fill } from "@/lib/format";
 import { useMatch } from "./MatchProvider";
 
@@ -19,9 +19,10 @@ import { useMatch } from "./MatchProvider";
  * prompt: the question is on screen and so is every acceptable reply.
  */
 export function AnswerChoices() {
+  const { t } = useI18n();
   const { question, answer, sending, step, retry, reset, started, hasResults } = useMatch();
 
-  const total = QUESTIONS.length;
+  const total = t.questions.length;
 
   // Nothing left to ask. Either the recommendation is on screen, or it is still
   // owed — because the call failed, or because the tab was reloaded while it was
@@ -38,10 +39,10 @@ export function AnswerChoices() {
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95"
           >
             <RefreshCw className="size-4" aria-hidden />
-            {COPY.match.tryAgain}
+            {t.match.tryAgain}
           </button>
         )}
-        {!sending && <RestartButton onClick={reset} label={COPY.match.restart} />}
+        {!sending && <RestartButton onClick={reset} label={t.match.restart} />}
       </div>
     );
   }
@@ -49,7 +50,7 @@ export function AnswerChoices() {
   return (
     <div>
       <p className="text-right text-xs uppercase tracking-widest text-muted-foreground">
-        {fill(COPY.match.progress, { step: step + 1, total })}
+        {fill(t.match.progress, { step: step + 1, total })}
       </p>
 
       <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -68,7 +69,7 @@ export function AnswerChoices() {
 
       {started && (
         <div className="mt-3 flex justify-end">
-          <RestartButton onClick={reset} label={COPY.match.restart} />
+          <RestartButton onClick={reset} label={t.match.restart} />
         </div>
       )}
     </div>

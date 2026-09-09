@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bot, Loader2, Sparkles } from "lucide-react";
-import { COPY } from "@/lib/questions";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 import { fill, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Recommendation, Turn } from "./MatchProvider";
@@ -23,6 +23,8 @@ import type { Recommendation, Turn } from "./MatchProvider";
  * give one.
  */
 export function AssistantMessages({ turns, sending }: { turns: Turn[]; sending: boolean }) {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-5" aria-live="polite">
       {turns.map((turn, index) => (
@@ -64,7 +66,7 @@ export function AssistantMessages({ turns, sending }: { turns: Turn[]; sending: 
           </span>
           <span className="inline-flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            {COPY.match.thinking}
+            {t.match.thinking}
           </span>
         </div>
       )}
@@ -73,6 +75,7 @@ export function AssistantMessages({ turns, sending }: { turns: Turn[]; sending: 
 }
 
 function ProductCard({ product }: { product: Recommendation }) {
+  const { locale } = useI18n();
   const onSale = product.onSale && product.salePrice !== null;
   const price = onSale ? product.salePrice! : product.price;
 
@@ -120,10 +123,10 @@ function ProductCard({ product }: { product: Recommendation }) {
         )}
         <h3 className="font-display text-base leading-snug text-foreground">{product.name}</h3>
         <div className="mt-auto flex items-baseline gap-2 pt-2">
-          <span className="font-medium text-foreground">{formatPrice(price)}</span>
+          <span className="font-medium text-foreground">{formatPrice(price, locale)}</span>
           {onSale && (
             <span className="text-xs text-muted-foreground line-through">
-              {formatPrice(product.price)}
+              {formatPrice(product.price, locale)}
             </span>
           )}
         </div>
@@ -176,11 +179,12 @@ function useCountUp(target: number, duration = 900): number {
  * when the score is missing.
  */
 function MatchMeter({ score }: { score: number }) {
+  const { t } = useI18n();
   const shown = useCountUp(typeof score === "number" && !Number.isNaN(score) ? score : 0);
 
   if (typeof score !== "number" || Number.isNaN(score)) return null;
 
-  const label = fill(COPY.match.matchLabel, { score: shown });
+  const label = fill(t.match.matchLabel, { score: shown });
 
   return (
     <div className="border-b border-border px-4 pb-2.5 pt-3">
@@ -196,7 +200,7 @@ function MatchMeter({ score }: { score: number }) {
           aria-valuenow={score}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={fill(COPY.match.matchLabel, { score: Math.round(score) })}
+          aria-label={fill(t.match.matchLabel, { score: Math.round(score) })}
         />
       </div>
     </div>

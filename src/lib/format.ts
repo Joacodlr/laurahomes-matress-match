@@ -1,9 +1,13 @@
-/** Spanish, EUR — this app sells in Spain and has no language toggle. */
-const LOCALE_TAG = "es-ES";
+import { localeTag, type Locale } from "./i18n/config";
 
-/** Format a EUR price with no decimals, positioned per Spanish conventions. */
-export function formatPrice(value: number): string {
-  return new Intl.NumberFormat(LOCALE_TAG, {
+/**
+ * Locale-aware formatting, matching laurahomes `src/lib/format.ts` — prices
+ * render natively per language ("1.299 €" in Spanish, "€1,299" in English).
+ */
+
+/** Format a EUR price with no decimals, positioned per locale conventions. */
+export function formatPrice(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(localeTag[locale], {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,

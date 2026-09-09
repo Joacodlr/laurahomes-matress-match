@@ -17,12 +17,30 @@ The matching logic is ported from `laurahomes`:
 | `src/lib/products/matcher.ts` | `src/lib/products/assistant.ts` (its `recommendNow` branch only) |
 | `src/lib/products/catalogue.ts` | same path in laurahomes |
 | `src/lib/products/repository.ts` | same path, reduced to `listProducts` |
-| `src/lib/questions.ts` | the `assistant.questions` dictionary entry |
+| `src/lib/i18n/dictionaries/` | the `assistant` dictionary entries, es and en |
+| `src/lib/i18n/I18nProvider.tsx` | same path in laurahomes |
 | `src/app/globals.css` | the design tokens, minus the blog/catalogue layers |
 
 The model never writes product text: it is given the catalogue with ids and
 answers with ids, and anything it returns that is not a real id is discarded.
 Every field on a card comes from the database row.
+
+## Language
+
+Spanish and English, with an ES / EN toggle in the corner. The locale is
+resolved on the server, so the first paint is already correct:
+
+1. the `mm_locale` cookie, if the visitor has used the toggle before;
+2. the browser's `Accept-Language`, parsed by quality;
+3. Spanish.
+
+laurahomes stops at step 1 — it is a Spanish-first site people arrive at
+deliberately. This one is a standalone link that may be handed to anyone, so
+guessing from the browser is worth the extra step. An explicit choice always
+wins: once the cookie exists the header is never consulted again.
+
+The chosen locale is also what the adviser writes its reply in — it is
+interpolated into the system prompt, exactly as laurahomes does it.
 
 ## Running it locally
 

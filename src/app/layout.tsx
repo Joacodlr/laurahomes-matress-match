@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n/I18nProvider";
+import { getDictionary } from "@/lib/i18n/dictionaries";
+import { getServerLocale } from "@/lib/i18n/server";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -16,26 +19,32 @@ const manrope = Manrope({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Match de Colchón — LauraHomes",
-  description:
-    "Responde a seis preguntas rápidas y te decimos qué colchón encaja mejor contigo, con precios reales de nuestro catálogo.",
-  authors: [{ name: "LauraHomes" }],
-  // Prevent browsers from offering to translate a page that is Spanish by design.
-  other: { google: "notranslate" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const t = getDictionary(locale);
+  return {
+    title: t.meta.title,
+    description: t.meta.description,
+    authors: [{ name: "LauraHomes" }],
+    // The page is already in the visitor's language, so a translation prompt on
+    // top of it is noise.
+    other: { google: "notranslate" },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getServerLocale();
+
   return (
     <html
-      lang="es"
+      lang={locale}
       translate="no"
       className={`notranslate ${fraunces.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        {children}
+        <I18nProvider initialLocale={locale}>{children}</I18nProvider>
       </body>
     </html>
   );

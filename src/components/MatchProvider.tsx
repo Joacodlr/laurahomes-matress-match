@@ -8,7 +8,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { COPY, QUESTIONS, type Question } from "@/lib/questions";
+import { useI18n } from "@/lib/i18n/I18nProvider";
+import type { Question } from "@/lib/i18n/types";
 
 /**
  * One product-finder conversation.
@@ -156,6 +157,9 @@ interface ContextValue {
 const MatchContext = createContext<ContextValue | null>(null);
 
 export function MatchProvider({ children }: { children: React.ReactNode }) {
+  const { t, locale } = useI18n();
+  const questions = t.questions;
+
   const turns = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   // Transient, per-visit state: not worth persisting, and a stale "sending"
   // restored from storage would leave the buttons disabled forever.
@@ -164,49 +168,53 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
 
   const step = stepFrom(turns);
 
-  const recommend = useCallback(async (history: Turn[]) => {
-    setError(null);
-    setSending(true);
+  const recommend = useCallback(
+    async (history: Turn[]) => {
+      setError(null);
+      setSending(true);
 
-    try {
-      const res = await fetch("/api/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: history
-            .filter((turn) => !turn.local)
-            .map(({ role, content }) => ({ role, content })),
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        reply?: string;
-        products?: Recommendation[];
-        error?: string;
-      };
+      try {
+        const res = await fetch("/api/match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locale,
+            messages: history
+              .filter((turn) => !turn.local)
+              .map(({ role, content }) => ({ role, content })),
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          reply?: string;
+          products?: Recommendation[];
+          error?: string;
+        };
 
-      if (!res.ok || !data.reply) {
-        setError(
-          res.status === 429 ? COPY.match.errorBusy : data.error || COPY.match.errorGeneric,
-        );
-        return;
+        if (!res.ok || !data.reply) {
+          setError(
+            res.status === 429 ? t.match.errorBusy : data.error || t.match.errorGeneric,
+          );
+          return;
+        }
+
+        setTranscript([
+          ...history,
+          { role: "assistant", content: data.reply, products: data.products ?? [] },
+        ]);
+      } catch {
+        setError(t.match.errorNetwork);
+      } finally {
+        setSending(false);
       }
-
-      setTranscript([
-        ...history,
-        { role: "assistant", content: data.reply, products: data.products ?? [] },
-      ]);
-    } catch {
-      setError(COPY.match.errorNetwork);
-    } finally {
-      setSending(false);
-    }
-  }, []);
+    },
+    [locale, t.match.errorBusy, t.match.errorGeneric, t.match.errorNetwork],
+  );
 
   const answer = useCallback(
     (index: number) => {
       if (sending) return;
 
-      const question = QUESTIONS[step];
+      const question = questions[step];
       const chosen = question?.answers[index];
       if (!question || !chosen) return;
 
@@ -223,18 +231,18 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
         { role: "assistant", content: chosen.reply, local: true },
       ];
 
-      const following = QUESTIONS[step + 1];
+      const following = questions[step + 1];
       if (following) {
         next.push({ role: "assistant", content: following.prompt });
         setTranscript(next);
         return;
       }
 
-      next.push({ role: "assistant", content: COPY.match.finishing, local: true });
+      next.push({ role: "assistant", content: t.match.finishing, local: true });
       setTranscript(next);
       void recommend(next);
     },
-    [recommend, sending, step, turns],
+    [questions, recommend, sending, step, t.match.finishing, turns],
   );
 
   const retry = useCallback(() => {
@@ -253,14 +261,14 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
       sending,
       error,
       step,
-      question: step < QUESTIONS.length ? QUESTIONS[step] : null,
+      question: step < questions.length ? questions[step] : null,
       answer,
       retry,
       reset,
       started: turns.length > 0,
       hasResults: turns.at(-1)?.products !== undefined,
     }),
-    [answer, error, reset, retry, sending, step, turns],
+    [answer, error, questions, reset, retry, sending, step, turns],
   );
 
   return <MatchContext.Provider value={value}>{children}</MatchContext.Provider>;

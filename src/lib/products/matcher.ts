@@ -1,4 +1,5 @@
 import "server-only";
+import { LANGUAGE_LABEL, type Locale } from "@/lib/i18n/config";
 import { getCatalogue } from "./catalogue";
 import type { Product } from "./types";
 
@@ -79,11 +80,14 @@ const MIN_MATCH = 60;
 const MAX_MATCH = 99;
 
 /**
- * Verbatim from laurahomes' `recommendNow` branch, with its `${language}`
- * variable resolved to Spanish — this app has no language toggle. Every other
- * line is unchanged, because the wording is what produces the answer.
+ * Verbatim from laurahomes' `recommendNow` branch, including its `${language}`
+ * interpolation — that line is what makes the adviser answer in the visitor's
+ * language rather than always in Spanish. Every other line is unchanged, because
+ * the wording is what produces the answer.
  */
-function systemPrompt(digest: string, categories: string[]): string {
+function systemPrompt(digest: string, categories: string[], locale: Locale): string {
+  const language = LANGUAGE_LABEL[locale];
+
   return [
     "You are the LauraHomes product adviser. LauraHomes sells bedroom furniture:",
     `${categories.join(", ")}.`,
@@ -94,7 +98,7 @@ function systemPrompt(digest: string, categories: string[]): string {
     "anything. Recommend now, using everything they told you.",
     "",
     "HOW TO BEHAVE",
-    "- Write your reply in Spanish, and only in Spanish.",
+    `- Write your reply in ${language}, and only in ${language}.`,
     "- Two or three sentences. Say what you picked up from their answers and why",
     "  these fit — warmly, like a shop assistant, not like a form.",
     "- Never invent a product, a price, a measurement or a feature. Everything",
@@ -128,7 +132,10 @@ function systemPrompt(digest: string, categories: string[]): string {
   ].join("\n");
 }
 
-export async function matchProducts(history: AssistantTurn[]): Promise<MatchResult> {
+export async function matchProducts(
+  history: AssistantTurn[],
+  locale: Locale,
+): Promise<MatchResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
 
@@ -140,7 +147,7 @@ export async function matchProducts(history: AssistantTurn[]): Promise<MatchResu
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
       messages: [
-        { role: "system", content: systemPrompt(digest, categories) },
+        { role: "system", content: systemPrompt(digest, categories, locale) },
         ...history.slice(-MAX_HISTORY).map((turn) => ({
           role: turn.role,
           content: turn.content.slice(0, MAX_MESSAGE_CHARS),

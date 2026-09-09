@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { COPY, QUESTIONS } from "@/lib/questions";
+import { useI18n } from "@/lib/i18n/I18nProvider";
+import { LanguageToggle } from "./LanguageToggle";
 import { AnswerChoices } from "./AnswerChoices";
 import { AssistantMessages } from "./AssistantMessages";
 import { MatchProvider, useMatch, type Turn } from "./MatchProvider";
@@ -30,6 +31,7 @@ export function MatchFlow() {
 }
 
 function MatchFlowInner() {
+  const { t } = useI18n();
   const { turns, sending, error, started } = useMatch();
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -39,26 +41,29 @@ function MatchFlowInner() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns, sending]);
 
-  const opening: Turn[] = [{ role: "assistant", content: QUESTIONS[0].prompt }];
+  const opening: Turn[] = [{ role: "assistant", content: t.questions[0].prompt }];
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col px-6 py-12 sm:py-16">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        {COPY.match.backHome}
-      </Link>
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t.match.backHome}
+        </Link>
+        <LanguageToggle />
+      </div>
 
       <header className="mt-8 text-center">
         <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-sand">
           <Sparkles className="size-7 text-accent" aria-hidden />
         </div>
         <h1 className="mt-6 font-display text-3xl font-medium text-foreground sm:text-4xl">
-          {COPY.match.title}
+          {t.match.title}
         </h1>
-        <p className="mx-auto mt-3 max-w-md text-muted-foreground">{COPY.match.subtitle}</p>
+        <p className="mx-auto mt-3 max-w-md text-muted-foreground">{t.match.subtitle}</p>
       </header>
 
       {/* Before the first click there is no transcript, so the first question
