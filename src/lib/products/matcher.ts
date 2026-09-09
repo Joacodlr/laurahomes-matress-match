@@ -1,6 +1,6 @@
 import "server-only";
 import { LANGUAGE_LABEL, type Locale } from "@/lib/i18n/config";
-import { BUDGET_BANDS, STYLE_FINISHES } from "@/lib/questionnaire";
+import { BUDGET_BANDS, STYLE_TONES } from "@/lib/questionnaire";
 import { buildDigest, getCatalogue } from "./catalogue";
 import type { Product } from "./types";
 
@@ -80,12 +80,6 @@ const FALLBACK_MATCH = [94, 88, 82];
 const MIN_MATCH = 60;
 const MAX_MATCH = 99;
 
-/**
- * Verbatim from laurahomes' `recommendNow` branch, including its `${language}`
- * interpolation — that line is what makes the adviser answer in the visitor's
- * language rather than always in Spanish. Every other line is unchanged, because
- * the wording is what produces the answer.
- */
 /** What the shopper picked, by question key, as the index of their answer. */
 export type Choices = Record<string, number>;
 
@@ -95,33 +89,43 @@ function effectivePrice(product: Product): number {
 }
 
 /**
- * Narrow the catalogue to the chosen budget band.
+ * Drop anything the shopper cannot afford.
  *
- * Done here rather than asked of the model, because price is the one attribute
- * in this catalogue that is always present and unambiguous — and an instruction
- * to "compare against the band before you write a word" is a request, while a
- * filter is a guarantee.
+ * The ceiling is enforced here rather than asked of the model, because price is
+ * the one attribute in this catalogue that is always present and unambiguous —
+ * and an instruction to "compare against the band before you write a word" is a
+ * request, while a filter is a guarantee.
  *
- * When the band is empty the whole catalogue comes back with `unmet` set: an
- * empty result helps nobody, but the prompt then has to say plainly that nothing
- * matched rather than presenting the nearest thing as if it fitted.
+ * Only the ceiling. The floor is a preference handed to the model instead: a
+ * budget of "600-1000" is what someone will spend, not a refusal to see anything
+ * cheaper, and this catalogue discounts a 930 EUR mattress to 465.
+ *
+ * When nothing at all is affordable the whole catalogue comes back with `unmet`
+ * set — an empty result helps nobody, but the prompt then has to say plainly
+ * that everything is over budget rather than presenting it as a fit.
  */
 function withinBudget(
   products: Product[],
   band: { min: number; max: number | null } | undefined,
 ): { products: Product[]; unmet: boolean } {
-  if (!band) return { products, unmet: false };
+  if (!band || band.max === null) return { products, unmet: false };
 
-  const inBand = products.filter((product) => {
-    const price = effectivePrice(product);
-    return price >= band.min && (band.max === null || price <= band.max);
-  });
+  const affordable = products.filter((product) => effectivePrice(product) <= band.max!);
 
-  return inBand.length > 0
-    ? { products: inBand, unmet: false }
+  return affordable.length > 0
+    ? { products: affordable, unmet: false }
     : { products, unmet: true };
 }
 
+/**
+ * Laurahomes' `recommendNow` branch, keeping its `${language}` interpolation —
+ * that line is what makes the adviser answer in the visitor's language.
+ *
+ * Two sections have since diverged, both because this app enforces in code what
+ * that one only asks for: the budget paragraph is replaced by `budgetNote`
+ * (the catalogue arrives pre-filtered), and the finishes section is new (that
+ * project has no colour data to reason about at all).
+ */
 function systemPrompt(
   digest: string,
   categories: string[],
@@ -150,16 +154,21 @@ function systemPrompt(
     constraints.budgetNote,
     "",
     "FINISHES — READ THIS BEFORE MENTIONING A COLOUR",
-    "Each entry carries a `finishes:` field listing the colours that product's own",
-    "description names. Treat it as the only thing you know about how it looks.",
-    "- `finishes: unknown` means the description names no colour at all. You do NOT",
-    "  know what colour that product is. Never call it dark, white, wooden or",
-    "  anything else, and never claim it matches the look they asked for. You may",
-    "  still recommend it on comfort, size, storage or price — just say nothing",
-    "  about its appearance.",
-    "- When several finishes are listed the product is SOLD in all of them, so it",
-    "  is not inherently light or dark. Say it is available in the one they want,",
-    "  never that it simply is that colour.",
+    "Each entry carries `tone:` and `colours:`. Together they are the ONLY thing",
+    "you know about how a product looks. `tone` comes from someone actually",
+    "looking at the photograph; `colours` merges what the photo showed with what",
+    "the description lists.",
+    "- tone `claro` — light: white, cream, beige, pale wood, light grey.",
+    "- tone `oscuro` — dark: black, anthracite, wenge, dark wood.",
+    "- tone `mixto` — the product is SOLD in several finishes, so it is neither",
+    "  inherently light nor dark. Say it is AVAILABLE in the one they want, never",
+    "  that it simply is that colour.",
+    "- tone ending in `?` — the reading was not confident. You may mention it, but",
+    "  hedge: 'parece' / 'looks', never a flat statement.",
+    "- tone `unknown` — nobody could tell. You do NOT know what colour it is. Never",
+    "  call it dark, white, wooden or anything else, and never claim it matches the",
+    "  look they asked for. Recommend it on comfort, size, storage or price if it",
+    "  earns a place — just say nothing whatsoever about its appearance.",
     constraints.styleNote,
     "- Inventing a colour is the worst thing you can do here: it is the one claim a",
     "  customer checks immediately, and being wrong about it costs the sale.",
@@ -180,7 +189,7 @@ function systemPrompt(
     "  asked for, cannot score above 80 — you cannot verify the thing they asked",
     "  for, so the number must not pretend otherwise.",
     "",
-    "CATALOGUE (id | name | category | price | finishes | description)",
+    "CATALOGUE (id | name | category | price | tone | colours | description)",
     digest,
   ].join("\n");
 }
@@ -201,22 +210,29 @@ export async function matchProducts(
   const budgetNote = !band
     ? "- No budget was given, so do not comment on price."
     : unmet
-      ? `- IMPORTANT: the shopper's budget is ${band.min}-${band.max ?? "any"} EUR, and` +
-        "\n  NOTHING in the catalogue below falls inside it. The whole catalogue is" +
-        "\n  shown instead. Your FIRST sentence must say plainly that we have nothing" +
-        "\n  in that range — whether everything comes in under it or the closest is" +
-        "\n  dearer — and only then offer the nearest options. Never describe an" +
-        "\n  out-of-range product as fitting their budget."
-      : `- The catalogue below has ALREADY been filtered to the shopper's budget of` +
-        `\n  ${band.min}-${band.max ?? "any"} EUR. Everything you can see is affordable to` +
-        "\n  them, so treat price as settled and do not apologise for it.";
+      ? `- IMPORTANT: the shopper can spend up to ${band.max} EUR and EVERYTHING in the` +
+        "\n  catalogue below costs more. Your FIRST sentence must say plainly that we" +
+        "\n  have nothing in their range, and only then offer the closest options." +
+        "\n  Never describe an over-budget product as fitting their budget."
+      : `- The catalogue below has ALREADY been filtered to what the shopper can` +
+        `\n  afford (up to ${band.max ?? "any"} EUR). Everything you can see is within reach,` +
+        "\n  so treat price as settled and never apologise for it." +
+        (band.min > 0
+          ? `\n- They indicated a budget starting around ${band.min} EUR. Where two options` +
+            "\n  fit equally well, prefer the one nearer that figure — it is usually the" +
+            "\n  better product — but do NOT reject something cheaper that genuinely" +
+            "\n  suits them, and never imply they must spend more."
+          : "");
 
-  const wanted = STYLE_FINISHES[choices.style];
-  const styleNote =
-    wanted && wanted.length > 0
-      ? `- They asked for this look, so prefer products listing one of these` +
-        `\n  finishes: ${wanted.join(", ")}. If none of your picks can offer it, say so.`
-      : "- They have no colour preference, so do not dwell on finishes.";
+  const wanted = STYLE_TONES[choices.style];
+  const styleNote = wanted
+    ? `- THE LOOK THEY ASKED FOR: ${wanted.label}. Strongly prefer products whose` +
+      `\n  tone is \`${wanted.tone}\`, or \`mixto\` when their colours include one of:` +
+      `\n  ${wanted.colours.join(", ")}. A product with the wrong tone is a poor match no` +
+      "\n  matter how good it is otherwise — if you recommend one anyway, say why and" +
+      "\n  score it accordingly. If nothing in the catalogue offers the look they" +
+      "\n  asked for, say so plainly rather than pretending something does."
+    : "- They have no colour preference, so do not dwell on finishes.";
 
   // Built from the filtered list, not the cached full one — the model must not
   // see a product it is not allowed to recommend.

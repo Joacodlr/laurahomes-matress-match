@@ -1,5 +1,6 @@
 import "server-only";
 import { listProducts } from "./repository";
+import visionFinishes from "./finishes.json";
 import type { Product } from "./types";
 
 /**
@@ -82,13 +83,47 @@ const FINISH_WORDS = [
   "madera",
 ] as const;
 
-/** Which of those finishes a product's own text mentions, deduplicated. */
-function findFinishes(product: Product): string[] {
+/** What the vision pass recorded for one product, if anything. */
+interface VisionFinish {
+  tone: "claro" | "oscuro" | "mixto" | "desconocido";
+  colours: string[];
+  confident: boolean;
+}
+
+const VISION: Record<string, VisionFinish> = visionFinishes as Record<string, VisionFinish>;
+
+/**
+ * What we know about how a product looks.
+ *
+ * Two sources, because neither is enough alone. The description names a finish
+ * for only ten of the twenty-eight products; the photograph knows for
+ * twenty-seven, but a photo of a mattress on a white backdrop can be read as a
+ * white mattress, so the model was asked to say `desconocido` rather than guess.
+ * Where both speak, both are kept — the text tends to list the finishes a
+ * product is *sold* in, the photo shows the one that was *shot*.
+ *
+ * See scripts/classify-finishes.mjs for how the photo half is produced.
+ */
+function describeFinish(product: Product): { tone: string; colours: string[] } {
   // The whole description, NOT the truncated one: the finishes are usually
   // listed near the end, under "acabados disponibles", and truncating first
   // threw that away for six of the twenty-eight products.
   const haystack = `${product.name} ${product.description ?? ""}`.toLowerCase();
-  return FINISH_WORDS.filter((word) => haystack.includes(word));
+  const fromText = FINISH_WORDS.filter((word) => haystack.includes(word));
+
+  const seen = VISION[String(product.id)];
+  const fromPhoto = seen && seen.tone !== "desconocido" ? seen.colours : [];
+
+  return {
+    // An unconfident verdict still narrows things down, but the prompt is told
+    // to treat it as weaker evidence than one the model stood behind.
+    tone: !seen || seen.tone === "desconocido"
+      ? "unknown"
+      : seen.confident
+        ? seen.tone
+        : `${seen.tone}?`,
+    colours: [...new Set([...fromText, ...fromPhoto])],
+  };
 }
 
 /**
@@ -116,14 +151,15 @@ export function buildDigest(products: Product[]): string {
         .trim()
         .slice(0, DIGEST_DESCRIPTION_CHARS);
 
-      const finishes = findFinishes(product);
+      const { tone, colours } = describeFinish(product);
 
       return [
         `id=${product.id}`,
         product.name,
         product.categoryName ?? "uncategorised",
         `${price} EUR${sale}`,
-        `finishes: ${finishes.length > 0 ? finishes.join("/") : "unknown"}`,
+        `tone: ${tone}`,
+        `colours: ${colours.length > 0 ? colours.join("/") : "unknown"}`,
         description || "no description",
       ].join(" | ");
     })

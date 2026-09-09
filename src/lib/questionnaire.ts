@@ -58,10 +58,12 @@ export function scopedQuestions<T extends { key: string }>(
  * ("Menos de 300 €" / "Under EUR 300") and a number read out of prose is a
  * number waiting to be read wrong. `max: null` means no upper bound.
  *
- * This is what lets the budget be enforced in code instead of asked of the
- * model. Price is the one attribute in this catalogue that is reliably present
- * and unambiguous, so it is the one thing worth filtering on rather than
- * describing.
+ * `max` is a hard ceiling and `min` is only a preference. "Entre 600 € y 1000 €"
+ * is how someone says what they are willing to spend, not a refusal to be shown
+ * anything cheaper — and this catalogue discounts a 930 € mattress to 465, which
+ * a strict floor would hide from exactly the shopper most likely to buy it.
+ * The floor still matters enough to steer the ranking, so it is passed to the
+ * model as a preference rather than dropped.
  */
 export const BUDGET_BANDS: readonly { min: number; max: number | null }[] = [
   { min: 0, max: 300 },
@@ -70,10 +72,34 @@ export const BUDGET_BANDS: readonly { min: number; max: number | null }[] = [
   { min: 1000, max: null },
 ];
 
-/** The finishes each answer to the `style` question is asking for. */
-export const STYLE_FINISHES: readonly (readonly string[])[] = [
-  ["madera", "roble", "nogal", "natural"], // madera cálida
-  ["blanco", "crema", "beige"], // blanco y luminoso
-  ["negro", "wengue", "antracita", "gris", "cambrian"], // oscuro y acogedor
-  [], // me da igual el color
+/**
+ * What each answer to the `style` question is actually asking for, in the same
+ * vocabulary the catalogue digest uses.
+ *
+ * `tone` matches the field written by the vision pass (see
+ * scripts/classify-finishes.mjs); `colours` is what makes a `mixto` product —
+ * one sold in several finishes — count as a match. A null entry means no
+ * preference was expressed.
+ */
+export const STYLE_TONES: readonly ({
+  label: string;
+  tone: "claro" | "oscuro";
+  colours: readonly string[];
+} | null)[] = [
+  {
+    label: "warm wood",
+    tone: "claro",
+    colours: ["madera", "roble", "nogal", "natural", "marrón"],
+  },
+  {
+    label: "white and bright",
+    tone: "claro",
+    colours: ["blanco", "crema", "beige"],
+  },
+  {
+    label: "dark and cosy",
+    tone: "oscuro",
+    colours: ["negro", "wengue", "antracita", "gris", "cambrian", "morado"],
+  },
+  null, // me da igual el color
 ];
