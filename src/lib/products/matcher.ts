@@ -1,6 +1,7 @@
 import "server-only";
 import { LANGUAGE_LABEL, type Locale } from "@/lib/i18n/config";
-import { getCatalogue } from "./catalogue";
+import { BUDGET_BANDS, STYLE_FINISHES } from "@/lib/questionnaire";
+import { buildDigest, getCatalogue } from "./catalogue";
 import type { Product } from "./types";
 
 /**
@@ -85,7 +86,48 @@ const MAX_MATCH = 99;
  * language rather than always in Spanish. Every other line is unchanged, because
  * the wording is what produces the answer.
  */
-function systemPrompt(digest: string, categories: string[], locale: Locale): string {
+/** What the shopper picked, by question key, as the index of their answer. */
+export type Choices = Record<string, number>;
+
+/** The price actually charged — the sale price when there is one. */
+function effectivePrice(product: Product): number {
+  return product.onSale && product.salePrice !== null ? product.salePrice : product.price;
+}
+
+/**
+ * Narrow the catalogue to the chosen budget band.
+ *
+ * Done here rather than asked of the model, because price is the one attribute
+ * in this catalogue that is always present and unambiguous — and an instruction
+ * to "compare against the band before you write a word" is a request, while a
+ * filter is a guarantee.
+ *
+ * When the band is empty the whole catalogue comes back with `unmet` set: an
+ * empty result helps nobody, but the prompt then has to say plainly that nothing
+ * matched rather than presenting the nearest thing as if it fitted.
+ */
+function withinBudget(
+  products: Product[],
+  band: { min: number; max: number | null } | undefined,
+): { products: Product[]; unmet: boolean } {
+  if (!band) return { products, unmet: false };
+
+  const inBand = products.filter((product) => {
+    const price = effectivePrice(product);
+    return price >= band.min && (band.max === null || price <= band.max);
+  });
+
+  return inBand.length > 0
+    ? { products: inBand, unmet: false }
+    : { products, unmet: true };
+}
+
+function systemPrompt(
+  digest: string,
+  categories: string[],
+  locale: Locale,
+  constraints: { budgetNote: string; styleNote: string },
+): string {
   const language = LANGUAGE_LABEL[locale];
 
   return [
@@ -104,15 +146,23 @@ function systemPrompt(digest: string, categories: string[], locale: Locale): str
     "- Never invent a product, a price, a measurement or a feature. Everything",
     "  must come from the catalogue below.",
     "- The catalogue carries one starting price per product and no per-size",
-    "  prices, so weigh their budget against that and never quote a figure for a",
-    "  particular size — you do not have those.",
-    "- The budget they picked is a band. Compare it against the prices below",
-    "  BEFORE you write a word. If nothing falls inside that band, say so in your",
-    "  first sentence — that everything we stock comes in under it, or that the",
-    "  closest we have is dearer — and then recommend the nearest options anyway.",
-    "  An empty result helps nobody, but neither does telling someone a €260",
-    "  product perfectly suits a €600-1000 budget. Never claim a fit you cannot",
-    "  see in the prices.",
+    "  prices, so never quote a figure for a particular size — you do not have those.",
+    constraints.budgetNote,
+    "",
+    "FINISHES — READ THIS BEFORE MENTIONING A COLOUR",
+    "Each entry carries a `finishes:` field listing the colours that product's own",
+    "description names. Treat it as the only thing you know about how it looks.",
+    "- `finishes: unknown` means the description names no colour at all. You do NOT",
+    "  know what colour that product is. Never call it dark, white, wooden or",
+    "  anything else, and never claim it matches the look they asked for. You may",
+    "  still recommend it on comfort, size, storage or price — just say nothing",
+    "  about its appearance.",
+    "- When several finishes are listed the product is SOLD in all of them, so it",
+    "  is not inherently light or dark. Say it is available in the one they want,",
+    "  never that it simply is that colour.",
+    constraints.styleNote,
+    "- Inventing a colour is the worst thing you can do here: it is the one claim a",
+    "  customer checks immediately, and being wrong about it costs the sale.",
     "- Same for anything else they asked for that we do not stock. Name the gap,",
     "  then offer the closest thing.",
     "",
@@ -126,8 +176,11 @@ function systemPrompt(digest: string, categories: string[], locale: Locale): str
     "- `match` is a whole number from 60 to 99: how well that product fits",
     "  everything they told you, all their answers weighed together. Reserve the",
     "  nineties for a genuinely good fit and rank them so the first is highest.",
+    "  A product whose finish is unknown, or which does not come in the colour they",
+    "  asked for, cannot score above 80 — you cannot verify the thing they asked",
+    "  for, so the number must not pretend otherwise.",
     "",
-    "CATALOGUE (id | name | category | price | description)",
+    "CATALOGUE (id | name | category | price | finishes | description)",
     digest,
   ].join("\n");
 }
@@ -135,11 +188,39 @@ function systemPrompt(digest: string, categories: string[], locale: Locale): str
 export async function matchProducts(
   history: AssistantTurn[],
   locale: Locale,
+  choices: Choices = {},
 ): Promise<MatchResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
 
-  const { products, digest, categories } = await getCatalogue();
+  const { products: all, categories } = await getCatalogue();
+
+  const band = BUDGET_BANDS[choices.budget];
+  const { products: affordable, unmet } = withinBudget(all, band);
+
+  const budgetNote = !band
+    ? "- No budget was given, so do not comment on price."
+    : unmet
+      ? `- IMPORTANT: the shopper's budget is ${band.min}-${band.max ?? "any"} EUR, and` +
+        "\n  NOTHING in the catalogue below falls inside it. The whole catalogue is" +
+        "\n  shown instead. Your FIRST sentence must say plainly that we have nothing" +
+        "\n  in that range — whether everything comes in under it or the closest is" +
+        "\n  dearer — and only then offer the nearest options. Never describe an" +
+        "\n  out-of-range product as fitting their budget."
+      : `- The catalogue below has ALREADY been filtered to the shopper's budget of` +
+        `\n  ${band.min}-${band.max ?? "any"} EUR. Everything you can see is affordable to` +
+        "\n  them, so treat price as settled and do not apologise for it.";
+
+  const wanted = STYLE_FINISHES[choices.style];
+  const styleNote =
+    wanted && wanted.length > 0
+      ? `- They asked for this look, so prefer products listing one of these` +
+        `\n  finishes: ${wanted.join(", ")}. If none of your picks can offer it, say so.`
+      : "- They have no colour preference, so do not dwell on finishes.";
+
+  // Built from the filtered list, not the cached full one — the model must not
+  // see a product it is not allowed to recommend.
+  const digest = buildDigest(affordable);
 
   const res = await fetch(OPENAI_ENDPOINT, {
     method: "POST",
@@ -147,7 +228,10 @@ export async function matchProducts(
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
       messages: [
-        { role: "system", content: systemPrompt(digest, categories, locale) },
+        {
+          role: "system",
+          content: systemPrompt(digest, categories, locale, { budgetNote, styleNote }),
+        },
         ...history.slice(-MAX_HISTORY).map((turn) => ({
           role: turn.role,
           content: turn.content.slice(0, MAX_MESSAGE_CHARS),
@@ -176,7 +260,11 @@ export async function matchProducts(
   const reply = typeof decoded?.reply === "string" ? decoded.reply.trim() : "";
   if (!reply) throw new Error("OpenAI returned no reply text.");
 
-  return { reply, recommendations: resolveRecommendations(decoded, products) };
+  // Resolved against the filtered list, not the full catalogue: an id the model
+  // was never shown is one it invented or smuggled back in, and either way it
+  // must not reach a card. This is what makes the budget a guarantee rather than
+  // an instruction.
+  return { reply, recommendations: resolveRecommendations(decoded, affordable) };
 }
 
 /**

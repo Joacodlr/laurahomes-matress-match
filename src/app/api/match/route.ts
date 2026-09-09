@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getServerLocale } from "@/lib/i18n/server";
-import { MAX_HISTORY, MAX_MESSAGE_CHARS, matchProducts, type AssistantTurn } from "@/lib/products/matcher";
+import {
+  MAX_HISTORY,
+  MAX_MESSAGE_CHARS,
+  matchProducts,
+  type AssistantTurn,
+  type Choices,
+} from "@/lib/products/matcher";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 
 /**
@@ -36,6 +42,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     messages?: unknown;
     locale?: unknown;
+    choices?: unknown;
   };
 
   // The reply language follows the toggle the visitor is looking at, not the
@@ -56,7 +63,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await matchProducts(messages, locale);
+    const result = await matchProducts(messages, locale, readChoices(body.choices));
     return NextResponse.json({
       reply: result.reply,
       products: result.recommendations.map(({ product, match }) => ({
@@ -79,6 +86,27 @@ export async function POST(req: Request) {
       { status: 502 },
     );
   }
+}
+
+/**
+ * The structured answers, as `{ questionKey: answerIndex }`.
+ *
+ * Lenient on purpose: a malformed entry is dropped rather than failing the
+ * request, because every one of these is an optimisation — the transcript still
+ * carries the same information in prose. Losing the budget index costs a
+ * catalogue filter, not the recommendation.
+ */
+function readChoices(raw: unknown): Choices {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const out: Choices = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof key !== "string" || key.length > 40) continue;
+    if (typeof value !== "number" || !Number.isInteger(value)) continue;
+    if (value < 0 || value > 20) continue;
+    out[key] = value;
+  }
+  return out;
 }
 
 function readMessages(raw: unknown): AssistantTurn[] {

@@ -60,6 +60,38 @@ export async function getCatalogue(): Promise<Catalogue> {
 }
 
 /**
+ * Finish and colour words worth pulling out of a description.
+ *
+ * Spanish only, because that is what the catalogue is written in. Ordered
+ * longest-first where one word contains another, so "gris" inside "gris
+ * antracita" does not shadow the more specific term.
+ */
+const FINISH_WORDS = [
+  "blanco",
+  "negro",
+  "antracita",
+  "wengue",
+  "cambrian",
+  "nogal",
+  "roble",
+  "cemento",
+  "beige",
+  "crema",
+  "gris",
+  "natural",
+  "madera",
+] as const;
+
+/** Which of those finishes a product's own text mentions, deduplicated. */
+function findFinishes(product: Product): string[] {
+  // The whole description, NOT the truncated one: the finishes are usually
+  // listed near the end, under "acabados disponibles", and truncating first
+  // threw that away for six of the twenty-eight products.
+  const haystack = `${product.name} ${product.description ?? ""}`.toLowerCase();
+  return FINISH_WORDS.filter((word) => haystack.includes(word));
+}
+
+/**
  * The catalogue as the model sees it.
  *
  * Ids are included because the matcher answers with ids, never with product
@@ -67,8 +99,13 @@ export async function getCatalogue(): Promise<Catalogue> {
  * unlikely. Descriptions are trimmed: the real ones average ~690 characters of
  * technical Spanish, and sending all of them would be most of the prompt for
  * detail that does not help a recommendation.
+ *
+ * Finishes get a column of their own because trimming used to bury them. They
+ * are also explicitly marked `unknown` when the text names none — 18 of 28
+ * products say nothing about colour, and a blank field invites the model to
+ * assume a finish it cannot see. Saying so lets the prompt forbid claiming one.
  */
-function buildDigest(products: Product[]): string {
+export function buildDigest(products: Product[]): string {
   return products
     .map((product) => {
       const onSale = product.onSale && product.salePrice !== null;
@@ -79,11 +116,14 @@ function buildDigest(products: Product[]): string {
         .trim()
         .slice(0, DIGEST_DESCRIPTION_CHARS);
 
+      const finishes = findFinishes(product);
+
       return [
         `id=${product.id}`,
         product.name,
         product.categoryName ?? "uncategorised",
         `${price} EUR${sale}`,
+        `finishes: ${finishes.length > 0 ? finishes.join("/") : "unknown"}`,
         description || "no description",
       ].join(" | ");
     })

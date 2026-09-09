@@ -50,3 +50,30 @@ export function scopedQuestions<T extends { key: string }>(
     return !scope || scope.includes(chosen);
   });
 }
+
+/**
+ * The price band behind each answer to the `budget` question, in order.
+ *
+ * Kept here rather than parsed out of the label because the label is translated
+ * ("Menos de 300 €" / "Under EUR 300") and a number read out of prose is a
+ * number waiting to be read wrong. `max: null` means no upper bound.
+ *
+ * This is what lets the budget be enforced in code instead of asked of the
+ * model. Price is the one attribute in this catalogue that is reliably present
+ * and unambiguous, so it is the one thing worth filtering on rather than
+ * describing.
+ */
+export const BUDGET_BANDS: readonly { min: number; max: number | null }[] = [
+  { min: 0, max: 300 },
+  { min: 300, max: 600 },
+  { min: 600, max: 1000 },
+  { min: 1000, max: null },
+];
+
+/** The finishes each answer to the `style` question is asking for. */
+export const STYLE_FINISHES: readonly (readonly string[])[] = [
+  ["madera", "roble", "nogal", "natural"], // madera cálida
+  ["blanco", "crema", "beige"], // blanco y luminoso
+  ["negro", "wengue", "antracita", "gris", "cambrian"], // oscuro y acogedor
+  [], // me da igual el color
+];

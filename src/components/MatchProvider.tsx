@@ -135,6 +135,35 @@ function stepFrom(turns: Turn[]): number {
   return turns.filter((turn) => turn.role === "user").length;
 }
 
+/**
+ * Every answer in `turns` as `{ questionKey: answerIndex }`.
+ *
+ * Sent alongside the transcript so the server can act on the structured choices
+ * — filtering the catalogue to the chosen budget band — instead of reading a
+ * price out of translated prose. The nth user turn answers the nth question in
+ * the scoped list, which is what makes the pairing safe.
+ *
+ * A plain function rather than a memo because the final answer is submitted in
+ * the same tick it is recorded: a value derived from state would still be one
+ * answer behind at exactly the moment it matters.
+ */
+function choicesFrom(
+  turns: Turn[],
+  questions: readonly { key: string; answers: readonly { label: string }[] }[],
+): Record<string, number> {
+  const answered = turns.filter((turn) => turn.role === "user");
+  const out: Record<string, number> = {};
+
+  answered.forEach((turn, position) => {
+    const question = questions[position];
+    if (!question) return;
+    const index = question.answers.findIndex((option) => option.label === turn.content);
+    if (index !== -1) out[question.key] = index;
+  });
+
+  return out;
+}
+
 /* ───────────── Provider ───────────── */
 
 interface ContextValue {
@@ -188,6 +217,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
     () => scopedQuestions(t.questions, chosenCategory),
     [chosenCategory, t.questions],
   );
+
   // Transient, per-visit state: not worth persisting, and a stale "sending"
   // restored from storage would leave the buttons disabled forever.
   const [sending, setSending] = useState(false);
@@ -206,6 +236,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             locale,
+            choices: choicesFrom(history, questions),
             messages: history
               .filter((turn) => !turn.local)
               .map(({ role, content }) => ({ role, content })),
@@ -234,7 +265,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
         setSending(false);
       }
     },
-    [locale, t.match.errorBusy, t.match.errorGeneric, t.match.errorNetwork],
+    [locale, questions, t.match.errorBusy, t.match.errorGeneric, t.match.errorNetwork],
   );
 
   const answer = useCallback(
