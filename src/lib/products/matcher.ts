@@ -1,6 +1,6 @@
 import "server-only";
 import { LANGUAGE_LABEL, type Locale } from "@/lib/i18n/config";
-import { BUDGET_BANDS, STYLE_TONES } from "@/lib/questionnaire";
+import { BUDGET_BANDS, CATEGORY_SCOPE, STYLE_TONES } from "@/lib/questionnaire";
 import { buildDigest, childFriendliness, describeFinish, getCatalogue } from "./catalogue";
 import type { Product } from "./types";
 
@@ -118,6 +118,46 @@ function withinBudget(
 }
 
 /**
+ * Keep only the kind of thing they said they were shopping for.
+ *
+ * Asking for a headboard and being handed a bed base is the most basic way to
+ * get this wrong, and until now nothing stopped it: the first answer scoped
+ * which *questions* were asked but never which *products* could come back.
+ *
+ * Matched on the category or the product's own name, because the catalogue is
+ * not perfectly filed — see CATEGORY_SCOPE.
+ */
+function matchingCategory(
+  products: Product[],
+  wanted: { label: string; categories: readonly string[]; nameWords: readonly string[] } | null | undefined,
+): { products: Product[]; unmet: boolean } {
+  if (!wanted) return { products, unmet: false };
+
+  /** Every other choice's name words, so a name can rule a product OUT. */
+  const otherWords = CATEGORY_SCOPE.filter(
+    (scope): scope is NonNullable<typeof scope> => scope !== null && scope !== wanted,
+  ).flatMap((scope) => scope.nameWords);
+
+  const matches = products.filter((product) => {
+    const name = product.name.toLowerCase();
+    const namedAsThis = wanted.nameWords.some((word) => name.includes(word));
+
+    // The name wins over the category, in both directions. `Cabecero LUNA` is
+    // filed under "Canapés", so trusting the category alone would both hide it
+    // from someone asking for a headboard and offer it to someone asking for a
+    // base. A product that calls itself a cabecero is a cabecero.
+    if (namedAsThis) return true;
+    if (otherWords.some((word) => name.includes(word))) return false;
+
+    return Boolean(product.categoryName && wanted.categories.includes(product.categoryName));
+  });
+
+  return matches.length > 0
+    ? { products: matches, unmet: false }
+    : { products, unmet: true };
+}
+
+/**
  * Keep only what could plausibly be the look they asked for.
  *
  * The same argument as the budget filter: telling the model to prefer a dark
@@ -200,7 +240,7 @@ function systemPrompt(
   digest: string,
   categories: string[],
   locale: Locale,
-  constraints: { budgetNote: string; styleNote: string; childNote: string },
+  constraints: { categoryNote: string; budgetNote: string; styleNote: string; childNote: string },
 ): string {
   const language = LANGUAGE_LABEL[locale];
 
@@ -221,6 +261,7 @@ function systemPrompt(
     "  must come from the catalogue below.",
     "- The catalogue carries one starting price per product and no per-size",
     "  prices, so never quote a figure for a particular size — you do not have those.",
+    constraints.categoryNote,
     constraints.budgetNote,
     "",
     "FINISHES — READ THIS BEFORE MENTIONING A COLOUR",
@@ -251,6 +292,12 @@ function systemPrompt(
     '{"reply": string, "recommendations": [{"id": string, "match": number}]}',
     "- `reply` is what the shopper reads. Do NOT list product names, prices or",
     "  descriptions in it — the interface renders a card for every id you return.",
+    "- EVERY id you return gets a card, and every card must be accounted for in",
+    "  the reply. If you cannot say why something is there, do not return it: one",
+    "  well-explained option beats three where two are unexplained. Where a pick is",
+    "  a companion rather than the thing they asked for, say so outright — 'y si",
+    "  quieres completarlo, esta base va con él' — so nothing on screen looks like",
+    "  a mistake. Returning fewer than three is always allowed and often better.",
     `- \`recommendations\` holds 1 to ${MAX_RECOMMENDATIONS} entries, best first, no id twice.`,
     "- `id` is copied exactly from the catalogue.",
     "- `match` is a whole number from 60 to 99: how well that product fits",
@@ -275,8 +322,22 @@ export async function matchProducts(
 
   const { products: all, categories } = await getCatalogue();
 
+  // Category first: everything else narrows within the kind of thing they came
+  // for, not across the whole shop.
+  const kind = CATEGORY_SCOPE[choices.need];
+  const { products: rightKind, unmet: kindUnmet } = matchingCategory(all, kind);
+
+  const categoryNote = !kind
+    ? "- They want the whole bed, so a mattress, a base and a headboard are all fair game."
+    : kindUnmet
+      ? `- IMPORTANT: they asked for ${kind.label} and we stock none. Say so in your` +
+        "\n  first sentence before offering anything else."
+      : `- They asked for ${kind.label}, and the catalogue below contains ONLY that.` +
+        "\n  Every entry is the right kind of product, so do not apologise for the" +
+        "\n  category or suggest they wanted something else.";
+
   const band = BUDGET_BANDS[choices.budget];
-  const { products: affordable, unmet } = withinBudget(all, band);
+  const { products: affordable, unmet } = withinBudget(rightKind, band);
 
   const budgetNote = !band
     ? "- No budget was given, so do not comment on price."
@@ -338,6 +399,7 @@ export async function matchProducts(
         {
           role: "system",
           content: systemPrompt(digest, categories, locale, {
+            categoryNote,
             budgetNote,
             styleNote,
             childNote,

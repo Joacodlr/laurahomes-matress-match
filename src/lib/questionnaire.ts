@@ -52,6 +52,42 @@ export function scopedQuestions<T extends { key: string }>(
 }
 
 /**
+ * What each answer to the first question is actually asking to be shown.
+ *
+ * `categories` are the real `product_categories.name` values; `nameWords` catch
+ * the same thing from the product's own name. Both are needed because the
+ * catalogue is not perfectly filed — `Cabecero LUNA` sits under "Canapés", and a
+ * shopper asking for a headboard should still be shown it. Matching either way
+ * is the difference between honouring the request and honouring the paperwork.
+ *
+ * The one uncategorised row, "Pack Oferta Colchón Visco y Canapé de Madera",
+ * legitimately matches both a mattress and a base request. That is correct: it
+ * is both.
+ */
+export const CATEGORY_SCOPE: readonly ({
+  label: string;
+  categories: readonly string[];
+  nameWords: readonly string[];
+} | null)[] = [
+  {
+    label: "a mattress",
+    categories: ["Colchones"],
+    nameWords: ["colchón", "colchon"],
+  },
+  {
+    label: "a bed base",
+    categories: ["Canapés", "Canapes", "Base cama"],
+    nameWords: ["canapé", "canape", "base", "cama"],
+  },
+  {
+    label: "a headboard",
+    categories: ["Cabecero", "Cabeceros"],
+    nameWords: ["cabecero", "cabecera"],
+  },
+  null, // el conjunto completo — everything is relevant
+];
+
+/**
  * The price band behind each answer to the `budget` question, in order.
  *
  * Kept here rather than parsed out of the label because the label is translated
