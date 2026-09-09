@@ -12,6 +12,12 @@ import type { Product } from "./types";
  * and rank. Left in the question-asking mode it reliably asks one more question
  * — the one thing a click-only flow has no way to answer.
  *
+ * The transcript is passed through as alternating chat messages, exactly as the
+ * source project sends it: the question prompts as `assistant` turns and the
+ * chosen labels as `user` turns. Flattening it into one block changes what the
+ * model is looking at and, with it, what it picks — so the shape is part of the
+ * contract, not a formatting detail.
+ *
  * The model never writes product text: it is given the catalogue with ids and
  * answers with ids, and anything it returns that is not a real id is discarded.
  * Every field the shopper sees comes from the database row. These are real
@@ -28,13 +34,23 @@ const DEFAULT_MODEL = "gpt-4o-mini";
 /** Someone is watching a spinner, so this is kept short. */
 const TIMEOUT_MS = 30_000;
 
+/**
+ * Turns of history sent back. Comfortably more than the questionnaire asks, and
+ * deliberately so: the whole point is that the recommendation weighs every
+ * answer, and a ceiling that dropped the first few would silently throw away
+ * what the shopper is even shopping for.
+ */
+export const MAX_HISTORY = 40;
+
+/** Per-message ceiling. A shopper describing a bedroom needs far less than this. */
+export const MAX_MESSAGE_CHARS = 800;
+
 /** Recommendations per reply. More than this stops being a recommendation. */
 const MAX_RECOMMENDATIONS = 3;
 
-/** One answered question, as the model sees it. */
-export interface AnsweredQuestion {
-  question: string;
-  answer: string;
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  content: string;
 }
 
 /** A recommended product with how well it fits what the shopper asked for. */
@@ -62,9 +78,14 @@ const FALLBACK_MATCH = [94, 88, 82];
 const MIN_MATCH = 60;
 const MAX_MATCH = 99;
 
+/**
+ * Verbatim from laurahomes' `recommendNow` branch, with its `${language}`
+ * variable resolved to Spanish — this app has no language toggle. Every other
+ * line is unchanged, because the wording is what produces the answer.
+ */
 function systemPrompt(digest: string, categories: string[]): string {
   return [
-    "You are the LauraHomes mattress adviser. LauraHomes sells bedroom furniture:",
+    "You are the LauraHomes product adviser. LauraHomes sells bedroom furniture:",
     `${categories.join(", ")}.`,
     "",
     "The shopper has just finished a guided questionnaire. Every question they",
@@ -107,19 +128,11 @@ function systemPrompt(digest: string, categories: string[]): string {
   ].join("\n");
 }
 
-export async function matchProducts(answers: AnsweredQuestion[]): Promise<MatchResult> {
+export async function matchProducts(history: AssistantTurn[]): Promise<MatchResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
 
   const { products, digest, categories } = await getCatalogue();
-
-  // The whole questionnaire arrives as one user message rather than a synthetic
-  // back-and-forth. There is no real dialogue to reconstruct — the answers were
-  // clicks — and a flat list is both smaller and harder to misread than a
-  // transcript the shopper never actually spoke.
-  const transcript = answers
-    .map(({ question, answer }) => `${question}\n→ ${answer}`)
-    .join("\n\n");
 
   const res = await fetch(OPENAI_ENDPOINT, {
     method: "POST",
@@ -128,7 +141,10 @@ export async function matchProducts(answers: AnsweredQuestion[]): Promise<MatchR
       model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
       messages: [
         { role: "system", content: systemPrompt(digest, categories) },
-        { role: "user", content: transcript },
+        ...history.slice(-MAX_HISTORY).map((turn) => ({
+          role: turn.role,
+          content: turn.content.slice(0, MAX_MESSAGE_CHARS),
+        })),
       ],
       temperature: 0.5,
       response_format: { type: "json_object" },
@@ -159,6 +175,8 @@ export async function matchProducts(answers: AnsweredQuestion[]): Promise<MatchR
 /**
  * Turn the model's answer into real rows with a fit score.
  *
+ * Two shapes are accepted, as in the source project: `recommendations: [{id,
+ * match}]`, and the plain `product_ids: []` a model occasionally falls back to.
  * Unknown ids are dropped silently rather than reported: a model that invents an
  * id has nothing to show, and the reply text still stands on its own. Duplicates
  * are collapsed because a model asked for three options will occasionally repeat
@@ -168,20 +186,14 @@ function resolveRecommendations(
   decoded: Record<string, unknown> | null,
   catalogue: Product[],
 ): Recommendation[] {
-  if (!Array.isArray(decoded?.recommendations)) return [];
+  const entries = readEntries(decoded);
+  if (entries.length === 0) return [];
 
   const byId = new Map(catalogue.map((product) => [String(product.id), product]));
   const seen = new Set<string>();
   const resolved: Recommendation[] = [];
 
-  for (const entry of decoded.recommendations) {
-    const row = (entry ?? {}) as { id?: unknown; match?: unknown };
-    const id =
-      typeof row.id === "string"
-        ? row.id.trim()
-        : typeof row.id === "number"
-          ? String(row.id)
-          : "";
+  for (const { id, match } of entries) {
     if (!id || seen.has(id)) continue;
 
     const product = byId.get(id);
@@ -190,15 +202,40 @@ function resolveRecommendations(
       continue;
     }
 
-    const match =
-      typeof row.match === "number" && Number.isFinite(row.match) ? row.match : null;
-
     seen.add(id);
     resolved.push({ product, match: clampMatch(match, resolved.length) });
     if (resolved.length >= MAX_RECOMMENDATIONS) break;
   }
 
   return resolved;
+}
+
+/** Both reply shapes, flattened to `{ id, match }` with match possibly absent. */
+function readEntries(
+  decoded: Record<string, unknown> | null,
+): { id: string; match: number | null }[] {
+  const asId = (value: unknown): string =>
+    typeof value === "string"
+      ? value.trim()
+      : typeof value === "number"
+        ? String(value)
+        : "";
+
+  if (Array.isArray(decoded?.recommendations)) {
+    return decoded.recommendations.map((entry) => {
+      const row = (entry ?? {}) as { id?: unknown; match?: unknown };
+      return {
+        id: asId(row.id),
+        match: typeof row.match === "number" && Number.isFinite(row.match) ? row.match : null,
+      };
+    });
+  }
+
+  if (Array.isArray(decoded?.product_ids)) {
+    return decoded.product_ids.map((entry) => ({ id: asId(entry), match: null }));
+  }
+
+  return [];
 }
 
 /**

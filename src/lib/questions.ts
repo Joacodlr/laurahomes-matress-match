@@ -111,14 +111,19 @@ export const COPY = {
     ],
     footnote: "Sin registro. Sin correo. Solo tu colchón.",
   },
+  // Verbatim from laurahomes' `assistant` dictionary entry, so the two read
+  // identically. `errorBusy` and `backHome` are the only additions: this app has
+  // a rate limiter and a landing page, and that one has neither.
   match: {
+    title: "Encuentra tu producto",
+    subtitle:
+      "Responde a unas preguntas rápidas y te decimos qué encaja mejor de nuestro catálogo.",
     progress: "Pregunta {step} de {total}",
     thinking: "Buscando lo que mejor encaja…",
     finishing: "Gracias, ya tengo todo lo que necesito. Dame un segundo…",
     matchLabel: "{score}% para ti",
     restart: "Empezar de nuevo",
     tryAgain: "Reintentar",
-    order: "Ver producto",
     errorGeneric: "No hemos podido responder. Inténtalo de nuevo.",
     errorNetwork: "Sin conexión con el servidor. Comprueba tu red e inténtalo de nuevo.",
     errorBusy: "Demasiadas consultas seguidas. Espera un momento e inténtalo otra vez.",
