@@ -21,26 +21,26 @@ const es = {
   },
   landing: {
     eyebrow: "LauraHomes",
-    title: "Encuentra tu colchón ideal",
+    title: "Encuentra tu cama ideal",
     subtitle:
-      "Responde seis preguntas sobre cómo duermes, el estilo que buscas y tu presupuesto. Te recomendamos las opciones de nuestro catálogo que mejor encajan contigo, con su precio y el motivo de cada elección.",
-    cta: "Encontrar mi colchón",
+      "Colchones, canapés y cabeceros. Responde siete preguntas sobre cómo duermes, el estilo que buscas y tu presupuesto, y te recomendamos las piezas de nuestro catálogo que mejor encajan contigo, con su precio y el motivo de cada elección.",
+    cta: "Encontrar lo que busco",
     footnote: "Sin registro ni datos personales.",
     steps: [
       {
-        title: "Responde seis preguntas",
+        title: "Responde siete preguntas",
         body: "Solo tienes que elegir entre las opciones que te damos. Sin formularios ni textos largos.",
       },
       {
         title: "Analizamos tus respuestas",
-        body: "Las contrastamos con nuestro catálogo completo, con sus precios y características reales.",
+        body: "Las contrastamos con todo el catálogo — colchones, canapés y cabeceros — con sus precios y características reales.",
       },
       {
         title: "Recibe tres recomendaciones",
         body: "Cada una con su grado de encaje y una explicación clara de por qué te conviene.",
       },
     ],
-    meta: "6 preguntas · menos de un minuto",
+    meta: "7 preguntas · menos de un minuto",
   },
   match: {
     title: "Encuentra tu producto",
@@ -69,12 +69,12 @@ const es = {
   questions: [
     {
       key: "need",
-      prompt: "¿Qué buscas para tu dormitorio?",
+      prompt: "¿Qué estás buscando?",
       answers: [
-        { label: "Un colchón cómodo", reply: "Perfecto, empecemos por el colchón." },
-        { label: "Una cama con almacenaje", reply: "Buena idea, el almacenaje se agradece." },
-        { label: "Un cabecero moderno", reply: "Genial, un cabecero cambia todo el cuarto." },
-        { label: "Lo que tengáis en oferta", reply: "Me gusta, vamos a por las ofertas." },
+        { label: "Un colchón", reply: "Perfecto, empecemos por el colchón." },
+        { label: "Un canapé o una base", reply: "Buena elección, la base cambia el descanso." },
+        { label: "Un cabecero", reply: "Genial, un cabecero cambia todo el cuarto." },
+        { label: "El conjunto completo", reply: "Vamos entonces a por la cama entera." },
       ],
     },
     {
@@ -87,14 +87,17 @@ const es = {
         { label: "Es para invitados", reply: "Perfecto, para la habitación de invitados." },
       ],
     },
+    // The last answer is the opt-out for someone who only came for a base or a
+    // headboard. Every visitor sees every question — the flow does not branch —
+    // so each mattress-specific one needs a way to say "not for me".
     {
       key: "firmness",
-      prompt: "¿Cómo te gusta el colchón?",
+      prompt: "Si entra un colchón, ¿cómo lo prefieres?",
       answers: [
         { label: "Firme", reply: "Firme, tomo nota." },
         { label: "Medio", reply: "El término medio funciona para casi todo el mundo." },
         { label: "Blando y mullido", reply: "Blandito, entendido." },
-        { label: "No estoy seguro", reply: "Tranquilo, para eso estoy yo." },
+        { label: "No busco colchón", reply: "Entendido, nos centramos en el resto." },
       ],
     },
     {
@@ -105,6 +108,16 @@ const es = {
         { label: "Me despierto varias veces", reply: "Vamos a intentar arreglar eso." },
         { label: "Paso calor por la noche", reply: "Entonces buscamos algo transpirable." },
         { label: "Me duele la espalda al levantarme", reply: "Eso pesa mucho en la elección." },
+      ],
+    },
+    {
+      key: "storage",
+      prompt: "¿Necesitas almacenaje debajo de la cama?",
+      answers: [
+        { label: "Todo el que pueda", reply: "Entonces miramos canapés abatibles." },
+        { label: "Algo vendría bien", reply: "Vale, algo de espacio extra." },
+        { label: "No me hace falta", reply: "Perfecto, más opciones abiertas." },
+        { label: "No lo había pensado", reply: "Te lo tengo en cuenta por si acaso." },
       ],
     },
     {

@@ -21,26 +21,26 @@ const en: Dictionary = {
   },
   landing: {
     eyebrow: "LauraHomes",
-    title: "Find your ideal mattress",
+    title: "Find your ideal bed",
     subtitle:
-      "Answer six questions about how you sleep, the look you want and your budget. We'll recommend the options from our catalogue that suit you best — with prices, and the reasoning behind each one.",
-    cta: "Find my mattress",
+      "Mattresses, bed bases and headboards. Answer seven questions about how you sleep, the look you want and your budget, and we'll recommend the pieces from our catalogue that suit you best — with prices, and the reasoning behind each one.",
+    cta: "Find what I need",
     footnote: "No sign-up, no personal details.",
     steps: [
       {
-        title: "Answer six questions",
+        title: "Answer seven questions",
         body: "Just pick from the options we give you. No forms, nothing to write.",
       },
       {
         title: "We weigh your answers",
-        body: "Against our full catalogue — real prices and real specifications.",
+        body: "Against the whole catalogue — mattresses, bases and headboards — with real prices and specifications.",
       },
       {
         title: "Get three recommendations",
         body: "Each with a fit score and a clear explanation of why it suits you.",
       },
     ],
-    meta: "6 questions · under a minute",
+    meta: "7 questions · under a minute",
   },
   match: {
     title: "Find your product",
@@ -62,10 +62,10 @@ const en: Dictionary = {
       key: "need",
       prompt: "What are you looking for?",
       answers: [
-        { label: "A comfortable mattress", reply: "Perfect, let's start with the mattress." },
-        { label: "A bed with storage", reply: "Good thinking — storage always helps." },
-        { label: "A modern headboard", reply: "Nice, a headboard changes the whole room." },
-        { label: "Whatever's on sale", reply: "I like your style. Let's look at the offers." },
+        { label: "A mattress", reply: "Perfect, let's start with the mattress." },
+        { label: "A bed base", reply: "Good choice — the base changes how you sleep." },
+        { label: "A headboard", reply: "Nice, a headboard changes the whole room." },
+        { label: "The whole bed", reply: "Right, let's put the whole thing together then." },
       ],
     },
     {
@@ -78,14 +78,17 @@ const en: Dictionary = {
         { label: "It's for guests", reply: "Perfect, the guest room it is." },
       ],
     },
+    // The last answer is the opt-out for someone who only came for a base or a
+    // headboard. Every visitor sees every question — the flow does not branch —
+    // so each mattress-specific one needs a way to say "not for me".
     {
       key: "firmness",
-      prompt: "How do you like your mattress?",
+      prompt: "If a mattress is involved, how do you like it?",
       answers: [
         { label: "Firm", reply: "Firm, noted." },
         { label: "Medium", reply: "Medium works for almost everyone." },
         { label: "Soft and plush", reply: "Nice and soft, understood." },
-        { label: "I'm not sure", reply: "No worries, that's what I'm here for." },
+        { label: "I'm not after a mattress", reply: "Understood — we'll focus on the rest." },
       ],
     },
     {
@@ -96,6 +99,16 @@ const en: Dictionary = {
         { label: "I wake up several times", reply: "Let's see if we can fix that." },
         { label: "I get hot at night", reply: "Then we want something breathable." },
         { label: "I wake up with back pain", reply: "That weighs heavily on the choice." },
+      ],
+    },
+    {
+      key: "storage",
+      prompt: "Do you need storage under the bed?",
+      answers: [
+        { label: "As much as possible", reply: "Then we'll look at lift-up bases." },
+        { label: "Some would help", reply: "Right, a bit of extra space." },
+        { label: "I don't need any", reply: "Perfect, that opens up more options." },
+        { label: "Hadn't thought about it", reply: "I'll keep it in mind just in case." },
       ],
     },
     {
