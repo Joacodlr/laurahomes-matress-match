@@ -20,9 +20,8 @@ import { useMatch } from "./MatchProvider";
  */
 export function AnswerChoices() {
   const { t } = useI18n();
-  const { question, answer, sending, step, retry, reset, started, hasResults } = useMatch();
-
-  const total = t.questions.length;
+  const { question, answer, sending, step, total, retry, reset, started, hasResults } =
+    useMatch();
 
   // Nothing left to ask. Either the recommendation is on screen, or it is still
   // owed — because the call failed, or because the tab was reloaded while it was

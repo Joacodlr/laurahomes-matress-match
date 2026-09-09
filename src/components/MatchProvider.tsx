@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { Question } from "@/lib/i18n/types";
+import { scopedQuestions } from "@/lib/questionnaire";
 
 /**
  * One product-finder conversation.
@@ -144,6 +145,8 @@ interface ContextValue {
   step: number;
   /** The question awaiting an answer, or null once they have all been asked. */
   question: Question | null;
+  /** How many questions this visitor will be asked, given their category. */
+  total: number;
   /** Answer the current question. `index` is into that question's `answers`. */
   answer: (index: number) => void;
   /** Re-run the final recommendation after a failure. */
@@ -158,9 +161,33 @@ const MatchContext = createContext<ContextValue | null>(null);
 
 export function MatchProvider({ children }: { children: React.ReactNode }) {
   const { t, locale } = useI18n();
-  const questions = t.questions;
 
   const turns = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  /**
+   * Which answer was chosen for the first question, by index — null until it has
+   * been. Read back off the transcript rather than stored separately, for the
+   * same reason `step` is: one source of truth cannot drift out of sync with
+   * what is on screen, including after a refresh.
+   *
+   * Matched on the label because that is what the transcript holds. Switching
+   * language mid-questionnaire leaves the stored label in the old one, and
+   * `findIndex` then returns -1 — treated as "not yet chosen", so every question
+   * is shown. A superset is the safe way to be wrong here.
+   */
+  const chosenCategory = useMemo(() => {
+    const first = turns.find((turn) => turn.role === "user");
+    if (!first) return null;
+    const index = t.questions[0].answers.findIndex(
+      (option) => option.label === first.content,
+    );
+    return index === -1 ? null : index;
+  }, [t.questions, turns]);
+
+  const questions = useMemo(
+    () => scopedQuestions(t.questions, chosenCategory),
+    [chosenCategory, t.questions],
+  );
   // Transient, per-visit state: not worth persisting, and a stale "sending"
   // restored from storage would leave the buttons disabled forever.
   const [sending, setSending] = useState(false);
@@ -262,6 +289,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
       error,
       step,
       question: step < questions.length ? questions[step] : null,
+      total: questions.length,
       answer,
       retry,
       reset,

@@ -23,13 +23,13 @@ const es = {
     eyebrow: "LauraHomes",
     title: "Encuentra tu cama ideal",
     subtitle:
-      "Colchones, canapés y cabeceros. Responde siete preguntas sobre cómo duermes, el estilo que buscas y tu presupuesto, y te recomendamos las piezas de nuestro catálogo que mejor encajan contigo, con su precio y el motivo de cada elección.",
+      "Colchones, canapés y cabeceros. Responde unas preguntas sobre cómo duermes, el estilo que buscas y tu presupuesto, y te recomendamos las piezas de nuestro catálogo que mejor encajan contigo, con su precio y el motivo de cada elección.",
     cta: "Encontrar lo que busco",
     footnote: "Sin registro ni datos personales.",
     steps: [
       {
-        title: "Responde siete preguntas",
-        body: "Solo tienes que elegir entre las opciones que te damos. Sin formularios ni textos largos.",
+        title: "Responde unas preguntas",
+        body: "Solo las que hagan falta para lo que buscas, y todas a golpe de clic.",
       },
       {
         title: "Analizamos tus respuestas",
@@ -40,7 +40,7 @@ const es = {
         body: "Cada una con su grado de encaje y una explicación clara de por qué te conviene.",
       },
     ],
-    meta: "7 preguntas · menos de un minuto",
+    meta: "Menos de un minuto",
   },
   match: {
     title: "Encuentra tu producto",
@@ -87,17 +87,17 @@ const es = {
         { label: "Es para invitados", reply: "Perfecto, para la habitación de invitados." },
       ],
     },
-    // The last answer is the opt-out for someone who only came for a base or a
-    // headboard. Every visitor sees every question — the flow does not branch —
-    // so each mattress-specific one needs a way to say "not for me".
+    // From here on, questions are shown only when they apply to what was picked
+    // above — see QUESTION_SCOPE in lib/questionnaire.ts. Nobody is asked about
+    // mattress firmness while shopping for a headboard.
     {
       key: "firmness",
-      prompt: "Si entra un colchón, ¿cómo lo prefieres?",
+      prompt: "¿Cómo te gusta el colchón?",
       answers: [
         { label: "Firme", reply: "Firme, tomo nota." },
         { label: "Medio", reply: "El término medio funciona para casi todo el mundo." },
         { label: "Blando y mullido", reply: "Blandito, entendido." },
-        { label: "No busco colchón", reply: "Entendido, nos centramos en el resto." },
+        { label: "No estoy seguro", reply: "Tranquilo, para eso estoy yo." },
       ],
     },
     {

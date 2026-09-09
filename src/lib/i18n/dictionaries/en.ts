@@ -23,13 +23,13 @@ const en: Dictionary = {
     eyebrow: "LauraHomes",
     title: "Find your ideal bed",
     subtitle:
-      "Mattresses, bed bases and headboards. Answer seven questions about how you sleep, the look you want and your budget, and we'll recommend the pieces from our catalogue that suit you best — with prices, and the reasoning behind each one.",
+      "Mattresses, bed bases and headboards. Answer a few questions about how you sleep, the look you want and your budget, and we'll recommend the pieces from our catalogue that suit you best — with prices, and the reasoning behind each one.",
     cta: "Find what I need",
     footnote: "No sign-up, no personal details.",
     steps: [
       {
-        title: "Answer seven questions",
-        body: "Just pick from the options we give you. No forms, nothing to write.",
+        title: "Answer a few questions",
+        body: "Only the ones that matter for what you're after, all by clicking.",
       },
       {
         title: "We weigh your answers",
@@ -40,7 +40,7 @@ const en: Dictionary = {
         body: "Each with a fit score and a clear explanation of why it suits you.",
       },
     ],
-    meta: "7 questions · under a minute",
+    meta: "Under a minute",
   },
   match: {
     title: "Find your product",
@@ -78,17 +78,17 @@ const en: Dictionary = {
         { label: "It's for guests", reply: "Perfect, the guest room it is." },
       ],
     },
-    // The last answer is the opt-out for someone who only came for a base or a
-    // headboard. Every visitor sees every question — the flow does not branch —
-    // so each mattress-specific one needs a way to say "not for me".
+    // From here on, questions are shown only when they apply to what was picked
+    // above — see QUESTION_SCOPE in lib/questionnaire.ts. Nobody is asked about
+    // mattress firmness while shopping for a headboard.
     {
       key: "firmness",
-      prompt: "If a mattress is involved, how do you like it?",
+      prompt: "How do you like your mattress?",
       answers: [
         { label: "Firm", reply: "Firm, noted." },
         { label: "Medium", reply: "Medium works for almost everyone." },
         { label: "Soft and plush", reply: "Nice and soft, understood." },
-        { label: "I'm not after a mattress", reply: "Understood — we'll focus on the rest." },
+        { label: "I'm not sure", reply: "No worries, that's what I'm here for." },
       ],
     },
     {
