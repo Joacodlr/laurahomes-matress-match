@@ -27,6 +27,23 @@ const es = {
     cta: "Empezar mi match",
     footnote: "Solo tardarás 60 segundos.",
   },
+  auth: {
+    title: "Inicia sesión para continuar.",
+    subtitle:
+      "Usa tu cuenta de LauraHomes. Es la misma en las dos aplicaciones.",
+    email: "Correo electrónico",
+    password: "Contraseña",
+    submit: "Entrar",
+    submitting: "Entrando…",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
+    noAccount: "¿Aún no tienes cuenta?",
+    registerLink: "Créala en LauraHomes",
+    unverified:
+      "Tu cuenta existe pero aún no has verificado tu correo. El enlace de verificación se envía desde LauraHomes:",
+    signOut: "Salir",
+    unverifiedLink: "verificarla allí",
+  },
   match: {
     title: "Encuentra tu producto",
     subtitle:

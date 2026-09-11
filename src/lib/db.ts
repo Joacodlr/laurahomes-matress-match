@@ -78,7 +78,7 @@ function isTransientConnectionError(error: unknown): boolean {
  * it. The pool drops the broken one on error, so a second attempt gets a fresh
  * connection instead of failing the request.
  *
- * Safe to retry unconditionally here because this app issues reads only.
+ * Reads only. Writes go through {@link execute}, which does NOT retry.
  */
 export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   try {
@@ -93,4 +93,24 @@ export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]
     const [rows] = await getPool().query(sql, params);
     return rows as T[];
   }
+}
+
+/**
+ * Run a parameterized write (INSERT / UPDATE / DELETE).
+ *
+ * Deliberately does NOT retry, unlike {@link query}. A write that fails with a
+ * connection reset may still have reached the server — the statement can have
+ * committed and only the acknowledgement been lost — so repeating it risks
+ * applying it twice. A duplicate session row is harmless; the habit of retrying
+ * writes is not, and this is the function the next one will copy.
+ *
+ * Added when auth arrived: until then this app read the catalogue and wrote
+ * nothing at all.
+ */
+export async function execute(sql: string, params: unknown[] = []): Promise<void> {
+  // `query` rather than `execute`: mysql2's prepared-statement overload types
+  // its values narrowly, and these come from callers as `unknown[]`. The
+  // placeholders are still escaped either way — this is about the type
+  // signature, not about interpolating values into the SQL.
+  await getPool().query(sql, params);
 }

@@ -1,12 +1,17 @@
+import { requireUser } from "@/lib/auth/dal";
 import { MatchFlow } from "@/components/MatchFlow";
 
 /**
- * The app itself. No auth — anyone who lands here can run the questionnaire.
+ * The questionnaire itself, behind a sign-in.
  *
- * The cost control for that lives in `POST /api/match` (a per-IP limiter), not
- * here: this page is static and free to serve.
+ * `requireUser()` rather than trusting the proxy: the proxy is the fast,
+ * optimistic gate and only reads the JWT, so a session revoked since the token
+ * was minted still looks valid to it. This is the check that goes to the
+ * database.
  */
-export default function MatchPage() {
+export default async function MatchPage() {
+  await requireUser();
+
   return (
     <main className="flex flex-1 flex-col">
       <MatchFlow />

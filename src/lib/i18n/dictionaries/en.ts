@@ -27,6 +27,22 @@ const en: Dictionary = {
     cta: "Start my match",
     footnote: "It takes about 60 seconds.",
   },
+  auth: {
+    title: "Sign in to continue.",
+    subtitle: "Use your LauraHomes account. It is the same one in both apps.",
+    email: "Email",
+    password: "Password",
+    submit: "Sign in",
+    submitting: "Signing in…",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+    noAccount: "No account yet?",
+    registerLink: "Create one at LauraHomes",
+    unverified:
+      "That account exists but its email has never been verified. The verification link is sent from LauraHomes:",
+    signOut: "Sign out",
+    unverifiedLink: "verify it there",
+  },
   match: {
     title: "Find your product",
     subtitle:

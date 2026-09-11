@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+import { logout } from "@/app/actions/auth";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { AnalyzingScreen } from "./AnalyzingScreen";
 import { LanguageToggle } from "./LanguageToggle";
@@ -42,8 +43,18 @@ function MatchFlowInner() {
         </Link>
       </div>
 
-      <div className="absolute right-6 top-6 z-10">
+      <div className="absolute right-6 top-6 z-10 flex items-center gap-4">
         <LanguageToggle />
+        {/* A plain form, not a client handler: logging out is a server action
+            that has to clear httpOnly cookies, which script cannot touch. */}
+        <form action={logout}>
+          <button
+            type="submit"
+            className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-faint transition-colors hover:text-ink"
+          >
+            {t.auth.signOut}
+          </button>
+        </form>
       </div>
 
       {/* Errors take the screen rather than sitting above a half-finished

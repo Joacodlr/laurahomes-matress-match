@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth/dal";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getServerLocale } from "@/lib/i18n/server";
 import {
@@ -22,9 +23,9 @@ import { allowRequest, clientIp } from "@/lib/rate-limit";
  * model in exactly the same form, which is what makes the two give the same
  * answer to the same clicks.
  *
- * There is no sign-in here, so the only thing between this and someone else's
- * OpenAI bill is the per-IP limiter. See `lib/rate-limit.ts` for what that does
- * and does not cover.
+ * Sign-in required: every call spends OpenAI credit, and the proxy does not
+ * cover `/api/*`. The per-IP limiter stays as a second line — an account is not
+ * a rate limit, and one signed-in visitor can still loop this.
  */
 
 // A single completion — well inside any platform limit, but declared so a slow
@@ -32,6 +33,11 @@ import { allowRequest, clientIp } from "@/lib/rate-limit";
 export const maxDuration = 45;
 
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   if (!allowRequest(clientIp(req))) {
     return NextResponse.json(
       { error: "Too many requests. Please wait a moment." },
