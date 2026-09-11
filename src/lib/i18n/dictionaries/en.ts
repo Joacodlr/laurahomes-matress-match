@@ -20,27 +20,12 @@ const en: Dictionary = {
     switchToEn: "Switch to English",
   },
   landing: {
-    eyebrow: "LauraHomes",
-    title: "Find your ideal bed",
+    eyebrow: "Mattress Match",
+    title: "Find the mattress that is right for you.",
     subtitle:
-      "Mattresses, bed bases and headboards. Answer a few questions about how you sleep, the look you want and your budget, and we'll recommend the pieces from our catalogue that suit you best — with prices, and the reasoning behind each one.",
-    cta: "Find what I need",
-    footnote: "No sign-up, no personal details.",
-    steps: [
-      {
-        title: "Answer a few questions",
-        body: "Only the ones that matter for what you're after, all by clicking.",
-      },
-      {
-        title: "We weigh your answers",
-        body: "Against the whole catalogue — mattresses, bases and headboards — with real prices and specifications.",
-      },
-      {
-        title: "Get three recommendations",
-        body: "Each with a fit score and a clear explanation of why it suits you.",
-      },
-    ],
-    meta: "Under a minute",
+      "Answer a few questions and we will work out which mattress suits you best.",
+    cta: "Start my match",
+    footnote: "It takes about 60 seconds.",
   },
   match: {
     title: "Find your product",
@@ -55,6 +40,25 @@ const en: Dictionary = {
     errorGeneric: "We couldn't answer that. Please try again.",
     errorNetwork: "Couldn't reach the server. Check your connection and try again.",
     errorBusy: "Too many requests in a row. Wait a moment and try again.",
+    back: "Back",
+    pickOne: "Pick whichever comes closest.",
+    analysing: {
+      title: "Reading how you sleep…",
+      steps: [
+        "How you sleep",
+        "Your ideal firmness",
+        "Your comfort level",
+        "What you need",
+        "Your budget",
+      ],
+    },
+    results: {
+      ready: "Your match is ready.",
+      matchWord: "Match",
+      alsoFits: "These also suit you",
+      view: "View product",
+      resume: "We still have your answers. Ask for your match again.",
+    },
     backHome: "Back to start",
   },
   questions: [

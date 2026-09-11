@@ -8,7 +8,14 @@ import { cn } from "@/lib/cn";
  * Compact ES / EN segmented control that switches the active locale.
  * Ported from laurahomes `src/components/layout/LanguageToggle.tsx`.
  */
-export function LanguageToggle({ className }: { className?: string }) {
+export function LanguageToggle({
+  className,
+  tone = "light",
+}: {
+  className?: string;
+  /** `dark` inverts it for the landing hero, which sits on a photograph. */
+  tone?: "light" | "dark";
+}) {
   const { locale, setLocale, t } = useI18n();
 
   return (
@@ -16,7 +23,10 @@ export function LanguageToggle({ className }: { className?: string }) {
       role="group"
       aria-label={t.lang.label}
       className={cn(
-        "inline-flex items-center rounded-full border border-border bg-background/60 p-0.5",
+        "inline-flex items-center rounded-full border p-0.5",
+        tone === "dark"
+          ? "border-white/25 bg-white/10 backdrop-blur-sm"
+          : "border-border bg-background/60",
         className,
       )}
     >
@@ -32,8 +42,12 @@ export function LanguageToggle({ className }: { className?: string }) {
             className={cn(
               "rounded-full px-2.5 py-1 text-xs font-semibold uppercase transition-colors",
               active
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                ? tone === "dark"
+                  ? "bg-white text-ink"
+                  : "bg-ink text-cream"
+                : tone === "dark"
+                  ? "text-white/70 hover:text-white"
+                  : "text-ink-faint hover:text-ink",
             )}
           >
             {code === "es" ? t.lang.es : t.lang.en}

@@ -20,27 +20,12 @@ const es = {
     switchToEn: "Cambiar a inglés",
   },
   landing: {
-    eyebrow: "LauraHomes",
-    title: "Encuentra tu cama ideal",
+    eyebrow: "Colchón Match",
+    title: "Encuentra el colchón perfecto para ti.",
     subtitle:
-      "Colchones, canapés y cabeceros. Responde unas preguntas sobre cómo duermes, el estilo que buscas y tu presupuesto, y te recomendamos las piezas de nuestro catálogo que mejor encajan contigo, con su precio y el motivo de cada elección.",
-    cta: "Encontrar lo que busco",
-    footnote: "Sin registro ni datos personales.",
-    steps: [
-      {
-        title: "Responde unas preguntas",
-        body: "Solo las que hagan falta para lo que buscas, y todas a golpe de clic.",
-      },
-      {
-        title: "Analizamos tus respuestas",
-        body: "Las contrastamos con todo el catálogo — colchones, canapés y cabeceros — con sus precios y características reales.",
-      },
-      {
-        title: "Recibe tres recomendaciones",
-        body: "Cada una con su grado de encaje y una explicación clara de por qué te conviene.",
-      },
-    ],
-    meta: "Menos de un minuto",
+      "Responde unas preguntas y descubriremos qué colchón encaja mejor contigo.",
+    cta: "Empezar mi match",
+    footnote: "Solo tardarás 60 segundos.",
   },
   match: {
     title: "Encuentra tu producto",
@@ -55,6 +40,25 @@ const es = {
     errorGeneric: "No hemos podido responder. Inténtalo de nuevo.",
     errorNetwork: "Sin conexión con el servidor. Comprueba tu red e inténtalo de nuevo.",
     errorBusy: "Demasiadas consultas seguidas. Espera un momento e inténtalo otra vez.",
+    back: "Atrás",
+    pickOne: "Elige la opción que más se acerque.",
+    analysing: {
+      title: "Analizando tu forma de dormir…",
+      steps: [
+        "Tu posición al dormir",
+        "Tu firmeza ideal",
+        "Tu nivel de confort",
+        "Tus necesidades",
+        "Tu presupuesto",
+      ],
+    },
+    results: {
+      ready: "Tu match está listo.",
+      matchWord: "Match",
+      alsoFits: "También encajan contigo",
+      view: "Ver producto",
+      resume: "Ya tenemos tus respuestas. Vuelve a pedir tu match.",
+    },
     backHome: "Volver al inicio",
   },
   /**

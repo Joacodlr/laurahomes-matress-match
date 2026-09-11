@@ -178,6 +178,8 @@ interface ContextValue {
   total: number;
   /** Answer the current question. `index` is into that question's `answers`. */
   answer: (index: number) => void;
+  /** Undo the last answer and return to that question. */
+  back: () => void;
   /** Re-run the final recommendation after a failure. */
   retry: () => void;
   reset: () => void;
@@ -303,6 +305,37 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
     [questions, recommend, sending, step, t.match.finishing, turns],
   );
 
+  /**
+   * Undo the last answer.
+   *
+   * The transcript is the only state, so going back is a matter of cutting it
+   * at the previous user turn: everything from that answer onward — the answer,
+   * its acknowledgement, the next question's prompt, and any recommendation
+   * already on screen — comes off together. `step` and the current question are
+   * both derived, so they follow on their own.
+   *
+   * The remaining turns keep their original prompts, which matters when the
+   * first answer is undone: that answer chooses the category, and the questions
+   * after it are scoped to it.
+   */
+  const back = useCallback(() => {
+    if (sending || turns.length === 0) return;
+
+    let lastUser = -1;
+    for (let i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].role === "user") {
+        lastUser = i;
+        break;
+      }
+    }
+    if (lastUser === -1) return;
+
+    setError(null);
+    // Everything before that answer, minus the question prompt it replied to —
+    // which is re-added below so the step it returns to is still introduced.
+    setTranscript(turns.slice(0, lastUser));
+  }, [sending, turns]);
+
   const retry = useCallback(() => {
     if (sending || turns.length === 0) return;
     void recommend(turns);
@@ -322,12 +355,13 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
       question: step < questions.length ? questions[step] : null,
       total: questions.length,
       answer,
+      back,
       retry,
       reset,
       started: turns.length > 0,
       hasResults: turns.at(-1)?.products !== undefined,
     }),
-    [answer, error, questions, reset, retry, sending, step, turns],
+    [answer, back, error, questions, reset, retry, sending, step, turns],
   );
 
   return <MatchContext.Provider value={value}>{children}</MatchContext.Provider>;

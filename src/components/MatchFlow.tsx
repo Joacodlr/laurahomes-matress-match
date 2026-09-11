@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { AnalyzingScreen } from "./AnalyzingScreen";
 import { LanguageToggle } from "./LanguageToggle";
-import { AnswerChoices } from "./AnswerChoices";
-import { AssistantMessages } from "./AssistantMessages";
-import { MatchProvider, useMatch, type Turn } from "./MatchProvider";
+import { MatchProvider, useMatch } from "./MatchProvider";
+import { QuestionScreen } from "./QuestionScreen";
+import { ResultsScreen } from "./ResultsScreen";
 
 /**
- * The product finder, full page.
+ * Which screen is showing.
  *
- * Ported from laurahomes `src/components/products/ProductAssistant.tsx`, plus a
- * link back to this app's landing page — laurahomes reaches its version through
- * a nav bar that does not exist here.
- *
- * A conversation the shopper holds up entirely by clicking: the adviser asks,
- * four answers appear, picking one moves it along. After the last question one
- * call to the model weighs every answer and returns the products with a fit
- * score each. Cards come from real catalogue rows the server resolved — the
- * model only chose which ids to show and how well they fit, never what they say.
+ * Four states, and the provider already knows which one it is in — `question`
+ * is null once everything has been asked, `sending` covers the wait, and
+ * `hasResults` says the answer has landed. Nothing extra is stored to track
+ * this: a separate step counter is a second source of truth waiting to disagree
+ * with the transcript.
  */
 export function MatchFlow() {
   return (
@@ -32,60 +28,72 @@ export function MatchFlow() {
 
 function MatchFlowInner() {
   const { t } = useI18n();
-  const { turns, sending, error, started } = useMatch();
-
-  const endRef = useRef<HTMLDivElement>(null);
-
-  // Keep the newest turn in view as the conversation grows.
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns, sending]);
-
-  const opening: Turn[] = [{ role: "assistant", content: t.questions[0].prompt }];
+  const { question, sending, error, hasResults, retry, reset } = useMatch();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col px-6 py-12 sm:py-16">
-      <div className="flex items-center justify-between gap-4">
+    <div className="relative min-h-dvh">
+      <div className="absolute left-6 top-6 z-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-ink-faint transition-colors hover:text-ink"
         >
-          <ArrowLeft className="size-4" aria-hidden />
+          <ArrowLeft className="size-3.5" aria-hidden />
           {t.match.backHome}
         </Link>
+      </div>
+
+      <div className="absolute right-6 top-6 z-10">
         <LanguageToggle />
       </div>
 
-      <header className="mt-8 text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-sand">
-          <Sparkles className="size-7 text-accent" aria-hidden />
-        </div>
-        <h1 className="mt-6 font-display text-3xl font-medium text-foreground sm:text-4xl">
-          {t.match.title}
-        </h1>
-        <p className="mx-auto mt-3 max-w-md text-muted-foreground">{t.match.subtitle}</p>
-      </header>
-
-      {/* Before the first click there is no transcript, so the first question
-          stands in for one — the page opens already in conversation rather than
-          with a heading that turns into a bubble the moment you answer it. */}
-      <div className="mt-8">
-        <AssistantMessages turns={started ? turns : opening} sending={sending} />
-        <div ref={endRef} />
-      </div>
-
-      {error && (
-        <p
-          role="alert"
-          className="mt-5 rounded-xl border border-clay-deep/30 bg-clay/15 p-3 text-center text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
+      {/* Errors take the screen rather than sitting above a half-finished
+          question: at this point every answer is in, so there is nothing else
+          to do here but try again. */}
+      {error ? (
+        <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 text-center">
+          <h1 className="font-display text-2xl font-normal text-ink">{error}</h1>
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-cream transition-transform hover:scale-[1.02] active:scale-[0.99]"
+            >
+              <RefreshCw className="size-3.5" aria-hidden />
+              {t.match.tryAgain}
+            </button>
+            <button
+              type="button"
+              onClick={reset}
+              className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-faint transition-colors hover:text-ink"
+            >
+              {t.match.restart}
+            </button>
+          </div>
+        </main>
+      ) : sending ? (
+        <AnalyzingScreen />
+      ) : hasResults ? (
+        <ResultsScreen />
+      ) : question ? (
+        <QuestionScreen />
+      ) : (
+        // Everything answered, nothing in flight and no result: the tab was
+        // reloaded while the request was open, which keeps the answers and
+        // loses the reply.
+        <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 text-center">
+          <h1 className="font-display text-2xl font-normal text-ink">
+            {t.match.results.resume}
+          </h1>
+          <button
+            type="button"
+            onClick={retry}
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-cream transition-transform hover:scale-[1.02]"
+          >
+            <RefreshCw className="size-3.5" aria-hidden />
+            {t.match.tryAgain}
+          </button>
+        </main>
       )}
-
-      <div className="sticky bottom-4 mt-8 rounded-2xl bg-background/80 py-3 backdrop-blur-sm">
-        <AnswerChoices />
-      </div>
     </div>
   );
 }
