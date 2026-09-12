@@ -1,36 +1,86 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { loginSchema, toFieldErrors } from "@/lib/auth/validation";
-import { findUserByEmail } from "@/lib/auth/repository";
-import { verifyPassword } from "@/lib/auth/password";
+import { loginSchema, registerSchema, toFieldErrors } from "@/lib/auth/validation";
+import { createUser, emailExists, findUserByEmail } from "@/lib/auth/repository";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { startSession, endSession } from "@/lib/auth/session";
 
 /**
- * Ported from laurahomes `src/app/actions/auth.ts`, login and logout only.
+ * Ported from laurahomes `src/app/actions/auth.ts`.
  *
- * There is deliberately no `register` here. Creating an account sends a
- * verification email and blocks sign-in until the link is clicked, which needs
- * the N8N email webhook, the templates, the verification-token secret and the
- * resend page — all of which LauraHomes already has. Duplicating them would
- * mean two apps writing the same `users` rows and sending the same emails; the
- * login screen links across instead.
+ * Registering here creates a real LauraHomes account — same `users` row, same
+ * bcrypt hash, same verification email — so nobody has to leave for a different
+ * site and come back. The only piece not carried over is the sales-force share
+ * code, which belongs to a LauraHomes flow this app has no part in.
  */
 
-/** Shape returned to the form via `useActionState`. */
+/** Shape returned to the forms via `useActionState`. */
 export interface AuthFormState {
   /** A form-wide error message (e.g. bad credentials). */
   error?: string;
   /** Per-field validation messages, keyed by input name. */
   fieldErrors?: Record<string, string>;
   /** Echo back submitted values so inputs are not cleared on error. */
-  values?: { email?: string };
-  /** Set when the account exists but has never verified its email. */
-  unverified?: boolean;
+  values?: { name?: string; surname?: string; email?: string };
 }
 
 /** Where a successful login lands. */
 const HOME = "/match";
+
+export async function register(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    surname: String(formData.get("surname") ?? ""),
+    email: String(formData.get("email") ?? ""),
+  };
+
+  const parsed = registerSchema.safeParse({
+    name: values.name,
+    surname: values.surname,
+    email: values.email,
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: toFieldErrors(parsed.error), values };
+  }
+
+  const { name, surname, email, password } = parsed.data;
+
+  // Checked up front for a readable message. The race — two submissions of the
+  // same address at once — is still caught by the unique index below, which is
+  // the check that actually holds.
+  if (await emailExists(email)) {
+    return {
+      fieldErrors: { email: "An account with this email already exists." },
+      values,
+    };
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  let user;
+  try {
+    user = await createUser({ name, surname, email, passwordHash });
+  } catch (error) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+      return {
+        fieldErrors: { email: "An account with this email already exists." },
+        values,
+      };
+    }
+    throw error;
+  }
+
+  // New accounts start unverified and are NOT signed in. The verify screen
+  // sends the email on load and offers a resend.
+  // redirect() throws NEXT_REDIRECT — it must stay outside any try/catch.
+  redirect(`/verify-email?email=${encodeURIComponent(user.email)}`);
+}
 
 export async function login(
   _prev: AuthFormState,
@@ -57,11 +107,9 @@ export async function login(
     return { error: "Invalid email or password.", values };
   }
 
-  // Unverified accounts cannot sign in, exactly as in LauraHomes. This app
-  // cannot send the verification email, so it says so and points there rather
-  // than redirecting to a resend page it does not have.
+  // Unverified accounts cannot sign in. Send them to the resend screen.
   if (!user.email_verified) {
-    return { unverified: true, values };
+    redirect(`/verify-email?email=${encodeURIComponent(user.email)}&status=unverified`);
   }
 
   await startSession({ id: user.id, email: user.email });

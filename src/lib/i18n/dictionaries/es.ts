@@ -38,11 +38,44 @@ const es = {
     showPassword: "Mostrar contraseña",
     hidePassword: "Ocultar contraseña",
     noAccount: "¿Aún no tienes cuenta?",
-    registerLink: "Créala en LauraHomes",
-    unverified:
-      "Tu cuenta existe pero aún no has verificado tu correo. El enlace de verificación se envía desde LauraHomes:",
+    registerLink: "Crear una cuenta",
     signOut: "Salir",
-    unverifiedLink: "verificarla allí",
+    register: {
+      title: "Crea tu cuenta.",
+      subtitle:
+        "Te llevará menos de un minuto. Después te enviamos un correo para confirmar tu dirección.",
+      name: "Nombre",
+      surname: "Apellidos",
+      email: "Correo electrónico",
+      password: "Contraseña",
+      submit: "Crear cuenta",
+      submitting: "Creando cuenta…",
+      hasAccount: "¿Ya tienes cuenta?",
+      loginLink: "Inicia sesión",
+      sharedNote: "Esta misma cuenta te sirve también en LauraHomes.",
+    },
+    verify: {
+      title: "Verifica tu correo",
+      subtitle: "Te enviamos un enlace de verificación.",
+      instruction:
+        "Haz clic en el enlace del correo que te enviamos para verificar tu cuenta. ¿No lo recibiste? Reenvíalo abajo.",
+      emailLabel: "Correo electrónico",
+      resend: "Reenviar correo",
+      resending: "Enviando…",
+      resendIn: "Reenviar en",
+      resent: "Correo de verificación enviado. Revisa tu bandeja de entrada.",
+      sendError: "No pudimos enviar el correo. Inténtalo de nuevo.",
+      statusUnverified: "Debes verificar tu correo antes de iniciar sesión.",
+      statusInvalid:
+        "Ese enlace de verificación no es válido o ha caducado. Solicita uno nuevo abajo.",
+      statusError: "Algo salió mal al verificar tu correo. Inténtalo de nuevo.",
+      backToLogin: "Volver a iniciar sesión",
+    },
+    verifySuccess: {
+      title: "Correo verificado",
+      subtitle: "Tu correo ha sido confirmado. Ya puedes iniciar sesión.",
+      loginCta: "Ir a iniciar sesión",
+    },
   },
   match: {
     title: "Encuentra tu producto",

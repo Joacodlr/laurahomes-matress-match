@@ -33,7 +33,7 @@ import { touchSession } from "@/lib/auth/repository";
  * next to the data.
  */
 
-const AUTH_PAGES = ["/login"];
+const AUTH_PAGES = ["/login", "/register"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -104,6 +104,10 @@ export const config = {
    * `/` is absent on purpose: the landing page explains what this is, and
    * someone deciding whether to sign in has to be able to read it. The
    * questionnaire behind it is what needs an account.
+   *
+   * `/verify-email` is absent for the opposite reason — everyone who lands
+   * there is unverified and therefore cannot be signed in, so gating it would
+   * only bounce the people it exists for.
    */
-  matcher: ["/match/:path*", "/login"],
+  matcher: ["/match/:path*", "/login", "/register"],
 };

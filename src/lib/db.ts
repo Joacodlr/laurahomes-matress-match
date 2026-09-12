@@ -114,3 +114,18 @@ export async function execute(sql: string, params: unknown[] = []): Promise<void
   // signature, not about interpolating values into the SQL.
   await getPool().query(sql, params);
 }
+
+/**
+ * Run an INSERT and return the auto-increment id it produced, as a string.
+ *
+ * MySQL has no `RETURNING`, so the id comes back on the result header. It is
+ * stringified because `users.id` is a BIGINT and the pool is configured to hand
+ * those back as strings — an id that round-trips through a JS number would be
+ * fine today and wrong at some row count nobody is watching for.
+ *
+ * No retry, for the same reason {@link execute} has none.
+ */
+export async function insert(sql: string, params: unknown[] = []): Promise<string> {
+  const [result] = await getPool().query<mysql.ResultSetHeader>(sql, params);
+  return String(result.insertId);
+}

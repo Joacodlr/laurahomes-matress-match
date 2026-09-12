@@ -1,20 +1,25 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { execute, query } from "@/lib/db";
+import { execute, insert, query } from "@/lib/db";
 
 /**
  * Users and sessions, against the SAME tables LauraHomes uses.
  *
- * Ported from laurahomes `src/lib/auth/repository.ts`, trimmed to what this app
- * does: read a user to check a password, and create/read/delete/slide session
- * rows. Account creation, email verification and permission tiers are
- * deliberately absent — LauraHomes owns those, and duplicating them here would
- * mean two apps racing to write the same rows.
+ * Ported from laurahomes `src/lib/auth/repository.ts`. An account created here
+ * is a LauraHomes account: same row, same bcrypt hash, same verification
+ * stamp. Signing up in either app signs you in to both.
  *
- * The one column contract that matters: `users.password_hash` is a bcrypt hash
- * written by LauraHomes, and `verifyPassword` here reads it with the same
- * library. Nothing re-hashes anything.
+ * The one column contract that matters: `users.password_hash` is a bcrypt hash,
+ * and both apps read and write it with the same library at the same cost
+ * factor. Nothing re-hashes anything.
+ *
+ * Permission tiers are the one thing left out. Every account made here is
+ * `Basic`, which is what self-registration produces in LauraHomes too;
+ * promoting anyone is done there, where the admin screens live.
  */
+
+/** Tier every self-registered account starts at. Mirrors the `users.type` enum. */
+const DEFAULT_USER_TYPE = "Basic";
 
 /** Full user row, including the password hash. Never send this to the client. */
 export interface UserRow {
@@ -36,6 +41,43 @@ export interface PublicUser {
 }
 
 // --- users -----------------------------------------------------------------
+
+/**
+ * Create an account. The row lands in the shared `users` table, so it is a
+ * LauraHomes account from the moment it exists.
+ *
+ * `email_verified` is left NULL — the column default. Sign-in is blocked until
+ * the link in the verification email stamps it.
+ */
+export async function createUser(input: {
+  name: string;
+  surname: string;
+  email: string;
+  passwordHash: string;
+}): Promise<PublicUser> {
+  const id = await insert(
+    `INSERT INTO users (name, surname, email, password_hash, type)
+     VALUES (?, ?, ?, ?, ?)`,
+    [input.name, input.surname, input.email, input.passwordHash, DEFAULT_USER_TYPE],
+  );
+  return { id, name: input.name, surname: input.surname, email: input.email };
+}
+
+export async function emailExists(email: string): Promise<boolean> {
+  const rows = await query(`SELECT 1 FROM users WHERE email = ? LIMIT 1`, [email]);
+  return rows.length > 0;
+}
+
+/**
+ * Stamp a user's email as verified. Only writes while it is still NULL, so a
+ * re-clicked link does not overwrite the original verification timestamp.
+ */
+export async function markEmailVerified(userId: string): Promise<void> {
+  await execute(
+    `UPDATE users SET email_verified = NOW() WHERE id = ? AND email_verified IS NULL`,
+    [userId],
+  );
+}
 
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
   const rows = await query<UserRow>(

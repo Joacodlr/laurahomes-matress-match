@@ -37,11 +37,44 @@ const en: Dictionary = {
     showPassword: "Show password",
     hidePassword: "Hide password",
     noAccount: "No account yet?",
-    registerLink: "Create one at LauraHomes",
-    unverified:
-      "That account exists but its email has never been verified. The verification link is sent from LauraHomes:",
+    registerLink: "Create one",
     signOut: "Sign out",
-    unverifiedLink: "verify it there",
+    register: {
+      title: "Create your account.",
+      subtitle:
+        "It takes under a minute. We'll then email you a link to confirm your address.",
+      name: "First name",
+      surname: "Surname",
+      email: "Email",
+      password: "Password",
+      submit: "Create account",
+      submitting: "Creating account…",
+      hasAccount: "Already have an account?",
+      loginLink: "Sign in",
+      sharedNote: "The same account works on LauraHomes.",
+    },
+    verify: {
+      title: "Verify your email",
+      subtitle: "We sent a verification link to your inbox.",
+      instruction:
+        "Click the link in the email we sent to verify your account. Didn't get it? Resend it below.",
+      emailLabel: "Email",
+      resend: "Resend email",
+      resending: "Sending…",
+      resendIn: "Resend in",
+      resent: "Verification email sent. Check your inbox.",
+      sendError: "We couldn't send the email. Please try again.",
+      statusUnverified: "You need to verify your email before signing in.",
+      statusInvalid:
+        "That verification link is invalid or has expired. Request a new one below.",
+      statusError: "Something went wrong verifying your email. Please try again.",
+      backToLogin: "Back to sign in",
+    },
+    verifySuccess: {
+      title: "Email verified",
+      subtitle: "Your email is confirmed. You can sign in now.",
+      loginCta: "Go to sign in",
+    },
   },
   match: {
     title: "Find your product",
